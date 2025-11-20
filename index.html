@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+        <meta name="description" content="候鸟逐春 - 中国候鸟迁徙与气温变化可视化" />
+        <meta name="author" content="" />
+        <title>候鸟逐春 - 气温与迁徙可视化</title>
+        <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+        
+        <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
+        <link href="https://fonts.googleapis.com/css?family=Varela+Round" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet" />
+        
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        
+        <link href="css/styles.css" rel="stylesheet" />
+
+        <style>
+            /* --- 地图容器 --- */
+            #map { 
+                width: 100%; 
+                height: 550px; 
+                background-color: #ffffff; 
+                border: none; 
+                border-radius: 0; 
+                box-shadow: none;
+            }
+            
+            /* --- 背景去花纹 --- */
+            header.masthead {
+                background: #222 !important; 
+                background-image: none !important; 
+            }
+            .projects-section {
+                background-image: none !important;
+            }
+            .background-icon-element {
+                display: none !important; 
+            }
+            
+            /* --- 滑块样式 --- */
+            .slider-container-bottom {
+                background: white;
+                padding: 10px 20px;
+                border-radius: 0.5rem;
+                margin-top: 10px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .current-month-number {
+                font-size: 1.2rem;
+                font-weight: 700;
+                color: #64a19d;
+                width: 60px;
+                text-align: center;
+                margin-right: 10px;
+            }
+            #month-slider {
+                flex-grow: 1;
+                max-width: 80%;
+                cursor: pointer;
+            }
+
+            /* --- 悬浮图例样式 --- */
+            .temp-legend-overlay {
+                position: absolute;
+                bottom: 20px;
+                right: 20px;
+                z-index: 1000;
+                background: rgba(255, 255, 255, 0.9);
+                padding: 10px;
+                border-radius: 6px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+                text-align: left;
+                display: flex;
+                flex-direction: column;
+            }
+            .temp-legend-overlay h6 {
+                margin: 0 0 8px 0;
+                font-size: 0.8rem;
+                color: #333;
+                font-weight: bold;
+                text-align: center;
+            }
+            .legend-content {
+                display: flex;
+                align-items: center;
+            }
+            #color-ramp {
+                width: 12px; 
+                height: 100px;
+                background: linear-gradient(to top, #0000FF 0%, #FFFF00 50%, #FF0000 100%);
+                margin-right: 8px;
+                border: 1px solid #ccc;
+                border-radius: 2px;
+            }
+            .legend-labels {
+                height: 100px; 
+                display: flex; 
+                flex-direction: column;
+                justify-content: space-between;
+                font-size: 0.7rem; 
+                color: #555;
+                line-height: 1;
+            }
+
+            /* --- 播放按钮样式 --- */
+            .play-control-btn {
+                position: absolute;
+                bottom: 20px;
+                left: 20px;
+                z-index: 1000;
+                width: 45px;
+                height: 45px;
+                border-radius: 50%;
+                background-color: white;
+                border: none;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+                color: #64a19d;
+                font-size: 18px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.2s ease;
+            }
+            .play-control-btn:hover {
+                background-color: #f8f9fa;
+                transform: scale(1.1);
+            }
+            .play-control-btn:active {
+                transform: scale(0.95);
+            }
+        </style>
+    </head>
+    <body id="page-top">
+        <nav class="navbar navbar-expand-lg navbar-light fixed-top" id="mainNav">
+            <div class="container px-4 px-lg-5 p-0">
+                <a class="navbar-brand" href="#page-top">候鸟逐春</a>
+                <button class="navbar-toggler navbar-toggler-right" type="button" data-bs-toggle="collapse" data-bs-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
+                    Menu
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarResponsive">
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item"><a class="nav-link" href="#about">迁徙奥秘</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#map-section">迁徙地图</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#contact">加入我们</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+        
+        <header class="masthead">
+            <div class="container px-4 px-lg-5 d-flex h-100 align-items-center justify-content-center">
+                <div class="d-flex justify-content-center">
+                    <div class="text-center">
+                        <h1 class="mx-auto my-0 text-uppercase">候鸟逐春</h1>
+                        <h2 class="text-white-50 mx-auto mt-2 mb-5">探索中国境内候鸟迁徙与季节温度变化的共舞</h2>
+                        <a class="btn btn-primary" href="#map-section">开启旅程</a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <section class="about-section text-center" id="about">
+            <div class="container px-4 px-lg-5">
+                <div class="row gx-4 gx-lg-5 justify-content-center">
+                    <div class="col-lg-8">
+                        <h2 class="text-white mb-4">逐温而行：生命的节律</h2>
+                        <p class="text-white-50">
+                            每年春天，随着暖湿气流北上，中国大地上演着壮观的生命迁徙。候鸟对气温变化极为敏感，它们追随着 <strong>5°C 至 10°C 的等温线</strong> 一路向北，寻找复苏的湿地与繁殖地。本项目通过叠加 2024 年全年月均气温地图，直观展示了这一场跨越数千公里的“追暖之旅”。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section class="projects-section bg-light" id="map-section">
+            <div class="container px-4 px-lg-5">
+                <div class="row mb-4">
+                    <div class="col-12 text-center">
+                        <h2 class="text-black">春季北迁模拟</h2>
+                        <p class="text-black-50">点击播放或拖动滑块，见证从海口到哈尔滨的逐春之路</p>
+                    </div>
+                </div>
+
+                <div class="row gx-0 mb-4 mb-lg-5">
+                    <div class="col-xl-8 col-lg-7 p-0">
+                        <div style="position: relative;">
+                            <div id="map"></div>
+
+                            <button id="play-btn" class="play-control-btn" onclick="togglePlay()" title="播放/暂停">
+                                <i class="fas fa-play"></i>
+                            </button>
+
+                            <div class="temp-legend-overlay">
+                                <h6>气温 (°C)</h6>
+                                <div class="legend-content">
+                                    <div id="color-ramp"></div>
+                                    <div class="legend-labels">
+                                        <span>35</span>
+                                        <span>20</span>
+                                        <span>5</span>
+                                        <span>-10</span>
+                                        <span>-25</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="slider-container-bottom">
+                            <span id="current-month-label" class="current-month-number">1月</span>
+                            <input type="range" id="month-slider" min="1" max="12" value="1" step="1">
+                        </div>
+                    </div>
+                    
+                    <div class="col-xl-4 col-lg-5">
+                        <div class="featured-text text-center text-lg-left" style="padding-left: 30px; height: 100%; display: flex; flex-direction: column; justify-content: center;">
+                            
+                            <h4 class="text-black">追随春天的脚步</h4>
+                            <p class="text-black-50 mb-4" style="font-size: 0.95rem; line-height: 1.6;">
+                                观察地图上红色的迁徙路径，它代表了典型的东部候鸟春季北迁路线。随着地图颜色的回暖（由蓝变黄），候鸟也随之北上：
+                            </p>
+                            <ul class="text-black-50" style="text-align: left; font-size: 0.9rem; list-style-type: none; padding-left: 0;">
+                                <li class="mb-2"><strong style="color: #64a19d;">3月 (起飞):</strong> <br>从温暖的 <strong>海口</strong> 启程，此时南方已春意盎然。</li>
+                                <li class="mb-2"><strong style="color: #64a19d;">4月 (途经):</strong> <br>抵达 <strong>上海</strong> 与 <strong>青岛</strong>，长江流域气温回升，适合停歇补给。</li>
+                                <li class="mb-2"><strong style="color: #64a19d;">5-6月 (抵达):</strong> <br>最终到达 <strong>哈尔滨</strong> 及更北的繁殖地，此时北方冰雪消融，万物复苏。</li>
+                            </ul>
+                            <p class="text-black-50 mt-3" style="font-size: 0.9rem;">
+                                * 使用下方的滑块切换月份，观察这一动态过程。
+                            </p>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section class="signup-section" id="contact">
+            <div class="container px-4 px-lg-5">
+                <div class="row gx-4 gx-lg-5">
+                    <div class="col-md-10 col-lg-8 mx-auto text-center">
+                        <i class="far fa-paper-plane fa-2x mb-2 text-white"></i>
+                        <h2 class="text-white mb-5">关注候鸟保护计划</h2>
+                        <p class="text-white-50 mb-4">订阅我们，获取最新的候鸟观测报告与气候变化研究简报。</p>
+                        <form class="form-signup" id="contactForm">
+                            <div class="row input-group-newsletter">
+                                <div class="col"><input class="form-control" id="emailAddress" type="email" placeholder="输入您的邮箱..." aria-label="Enter email address..." /></div>
+                                <div class="col-auto"><button class="btn btn-primary disabled" id="submitButton" type="submit">订阅</button></div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <footer class="footer bg-black small text-center text-white-50">
+            <div class="container px-4 px-lg-5 p-0">Copyright &copy; 候鸟逐春项目组 2025</div>
+        </footer>
+        
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="js/scripts.js"></script>
+        
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
+
+        <script>
+            // --- WebGIS 核心逻辑 ---
+
+            const TILE_BASE_URL = './tiles/2024-'; 
+
+            var map = L.map('map', {
+                scrollWheelZoom: false
+            }).setView([35.8617, 104.1954], 4);
+
+            // 底图
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap contributors',
+                zIndex: 0 
+            }).addTo(map);
+
+            // --- 路线管理图层组 ---
+            var routeLayerGroup = L.layerGroup().addTo(map);
+
+            // 关键点坐标 (更新为春季北迁顺序：海口 -> 上海 -> 青岛 -> 哈尔滨)
+            const locations = {
+                haikou: { coords: [110.3492, 20.0173], name: "海口 (起点)" },
+                shanghai: { coords: [121.4737, 31.2304], name: "上海 (途经)" },
+                qingdao: { coords: [120.3826, 36.0671], name: "青岛 (途经)" },
+                harbin: { coords: [126.6424, 45.7569], name: "哈尔滨 (终点)" }
+            };
+
+            // --- 气温图层管理 ---
+            let currentTemperatureLayer = null;
+
+            function updateTemperatureLayer(monthIndex) {
+                const monthStr = monthIndex.toString().padStart(2, '0');
+                const newTileUrl = `${TILE_BASE_URL}${monthStr}/{z}/{x}/{y}.png`; 
+                
+                // 1. 加载新图层
+                const nextLayer = L.tileLayer(newTileUrl, {
+                    minZoom: 3, maxZoom: 10, opacity: 0, tms: false, zIndex: 50
+                });
+                nextLayer.addTo(map);
+
+                // 2. 渐变效果
+                if (nextLayer.getContainer()) {
+                    nextLayer.getContainer().style.transition = 'opacity 0.5s linear';
+                }
+                setTimeout(() => { nextLayer.setOpacity(0.7); }, 20);
+
+                // 3. 清除旧图层
+                if (currentTemperatureLayer) {
+                    const oldLayer = currentTemperatureLayer;
+                    if (oldLayer.getContainer()) {
+                        oldLayer.getContainer().style.transition = 'opacity 0.5s linear';
+                    }
+                    oldLayer.setOpacity(0);
+                    setTimeout(() => { map.removeLayer(oldLayer); }, 500);
+                }
+
+                currentTemperatureLayer = nextLayer;
+                document.getElementById('current-month-label').textContent = `${monthIndex}月`;
+
+                // --- 4. 调用路线更新逻辑 ---
+                updateRoute(monthIndex);
+            }
+
+            // --- 根据月份动态更新路线 (适配春季北迁逻辑) ---
+            function updateRoute(month) {
+                // 清除旧图层
+                routeLayerGroup.clearLayers();
+
+                // 定义不同月份的迁徙进度 (春季：3月-6月)
+                let points = [];
+                
+                // 逻辑：3月出发，4-5月途经，6月抵达
+                if (month === 3) {
+                    // 3月：起点海口
+                    points = [locations.haikou];
+                } else if (month === 4) {
+                    // 4月：海口 -> 上海
+                    points = [locations.haikou, locations.shanghai];
+                } else if (month === 5) {
+                    // 5月：海口 -> 上海 -> 青岛
+                    points = [locations.haikou, locations.shanghai, locations.qingdao];
+                } else if (month >= 6 && month <= 8) { 
+                    // 6月-8月 (夏季)：完整路线到达哈尔滨
+                    points = [locations.haikou, locations.shanghai, locations.qingdao, locations.harbin];
+                } else {
+                    // 其他月份（秋冬）暂不显示，或者可以设计南迁逻辑
+                    return;
+                }
+
+                // 1. 绘制标记点
+                points.forEach(loc => {
+                    L.circleMarker([loc.coords[1], loc.coords[0]], { 
+                        radius: 6,
+                        fillColor: "#FF7F50", // 珊瑚色
+                        color: "#ffffff",
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 1
+                    }).bindPopup(loc.name).addTo(routeLayerGroup);
+                });
+
+                // 2. 绘制平滑曲线
+                if (points.length >= 2) {
+                    const lineCoords = points.map(p => p.coords);
+                    const line = turf.lineString(lineCoords);
+                    
+                    const curved = turf.bezierSpline(line, {
+                        resolution: 10000,
+                        sharpness: 0.5
+                    });
+
+                    L.geoJSON(curved, {
+                        style: {
+                            color: '#FF7F50',
+                            weight: 4,
+                            opacity: 0.9,
+                            dashArray: '10, 10',
+                            lineCap: 'round'
+                        }
+                    }).addTo(routeLayerGroup);
+                }
+            }
+
+            // --- 交互控制 ---
+            const slider = document.getElementById('month-slider');
+            // 初始化
+            updateTemperatureLayer(parseInt(slider.value)); 
+
+            let isPlaying = false;
+            let playInterval = null;
+
+            function togglePlay() {
+                const btn = document.getElementById('play-btn');
+                if (isPlaying) {
+                    stopPlay();
+                } else {
+                    startPlay();
+                }
+            }
+
+            function startPlay() {
+                isPlaying = true;
+                const btn = document.getElementById('play-btn');
+                btn.innerHTML = '<i class="fas fa-pause"></i>'; 
+                
+                playInterval = setInterval(() => {
+                    let currentVal = parseInt(slider.value);
+                    let nextVal = currentVal + 1;
+                    if (nextVal > 12) nextVal = 1;
+                    
+                    slider.value = nextVal;
+                    updateTemperatureLayer(nextVal);
+                }, 1000); 
+            }
+
+            function stopPlay() {
+                isPlaying = false;
+                clearInterval(playInterval);
+                const btn = document.getElementById('play-btn');
+                btn.innerHTML = '<i class="fas fa-play"></i>'; 
+            }
+
+            slider.addEventListener('input', function() {
+                if (isPlaying) stopPlay();
+                const month = parseInt(this.value);
+                updateTemperatureLayer(month);
+            });
+            
+            window.addEventListener('resize', function() {
+                map.invalidateSize();
+            });
+        </script>
+    </body>
+</html>
