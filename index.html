@@ -9,73 +9,161 @@
         <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
         
         <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
-        <link href="https://fonts.googleapis.com/css?family=Varela+Round" rel="stylesheet" />
-        <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet" />
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@700&family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
         
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         
         <link href="css/styles.css" rel="stylesheet" />
 
         <style>
-            /* --- 地图容器 --- */
+            /* --- 全局字体优化 --- */
+            body { font-family: 'Nunito', sans-serif; }
+            h1, h2, h3, h4, h5, h6, .bird-name, .navbar-brand { font-family: 'Noto Serif SC', serif; }
+
+            /* --- 1. 地图容器与底图风格 --- */
             #map { 
-                width: 100%; 
-                height: 650px; 
-                background-color: #ffffff; 
-                border: none; border-radius: 0; box-shadow: none;
+                width: 100%; height: 700px; 
+                background-color: #f8f9fa; /* 与浅灰底图融合 */
+                border: none; border-radius: 8px; /* 圆角回归，适应分栏 */
+                box-shadow: 0 4px 20px rgba(0,0,0,0.05);
             }
             
-            /* --- 基础 UI 调整 --- */
+            /* --- 2. 视觉特效 (CSS Animations) --- */
+            
+            /* A. 候鸟呼吸光圈特效 */
+            .bird-pulse-icon {
+                position: relative;
+                width: 14px !important; height: 14px !important;
+                border-radius: 50%;
+                border: 2px solid #fff;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+                z-index: 100;
+            }
+            .bird-pulse-icon::after {
+                content: ''; position: absolute;
+                top: 50%; left: 50%; transform: translate(-50%, -50%);
+                width: 100%; height: 100%; border-radius: 50%;
+                animation: pulse-ring 2s infinite; z-index: -1;
+            }
+            @keyframes pulse-ring {
+                0% { width: 100%; height: 100%; opacity: 0.8; box-shadow: 0 0 0 0 currentColor; }
+                70% { width: 300%; height: 300%; opacity: 0; box-shadow: 0 0 0 15px currentColor; }
+                100% { width: 300%; height: 300%; opacity: 0; }
+            }
+
+            /* B. 迁徙路线流光特效 */
+            .migration-line-flow {
+                stroke-dasharray: 6, 10;
+                animation: dash-flow 1s linear infinite;
+            }
+            @keyframes dash-flow {
+                from { stroke-dashoffset: 16; }
+                to { stroke-dashoffset: 0; }
+            }
+
+            /* --- 3. UI 组件美化 --- */
+            
             header.masthead { background: #222 !important; background-image: none !important; }
             .projects-section { background-image: none !important; }
             .background-icon-element { display: none !important; }
+
+            /* 左侧可伸缩侧边栏 (悬浮在地图上) */
+            .sidebar-wrapper {
+                position: absolute; top: 20px; left: 20px;
+                z-index: 2000; display: flex; align-items: flex-start;
+            }
+            .sidebar-trigger-btn {
+                width: 45px; height: 45px;
+                background: #64a19d; color: white;
+                border-radius: 50%; display: flex; justify-content: center; align-items: center;
+                font-size: 1.2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                cursor: pointer; transition: all 0.3s ease; position: relative; z-index: 2002;
+            }
+            .sidebar-wrapper:hover .sidebar-trigger-btn { background: #fff; color: #64a19d; transform: rotate(90deg); }
             
-            /* --- 滑块样式 --- */
+            .sidebar-panel {
+                width: 0; height: auto; max-height: 600px; overflow-y: auto; overflow-x: hidden;
+                background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px);
+                border-radius: 0 12px 12px 12px; box-shadow: 4px 4px 20px rgba(0,0,0,0.1);
+                margin-left: -22px; padding: 0; opacity: 0;
+                transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); pointer-events: none;
+            }
+            .sidebar-wrapper:hover .sidebar-panel {
+                width: 320px; padding: 20px 20px 20px 40px; opacity: 1; margin-left: -22px; pointer-events: auto;
+            }
+            .sidebar-content-inner { width: 260px; }
+            .sidebar-title { font-size: 1.1rem; font-weight: 800; color: #333; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 8px; font-family: 'Noto Serif SC'; }
+            
+            .bird-mini-card {
+                background: #fff; border: 1px solid #eee; border-left-width: 4px;
+                border-radius: 4px; padding: 10px; margin-bottom: 10px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+            }
+            .bird-mini-title { font-weight: bold; font-size: 0.95rem; margin-bottom: 4px; }
+            .bird-mini-text { font-size: 0.8rem; color: #666; line-height: 1.5; }
+
+            /* 滑块容器 */
             .slider-container-bottom {
-                background: white; padding: 15px 20px; border-radius: 0.5rem;
-                margin-top: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px);
+                padding: 15px 30px; border-radius: 50px; margin-top: 20px; 
+                box-shadow: 0 8px 32px rgba(0,0,0,0.05); border: 1px solid rgba(255,255,255,0.8);
                 display: flex; align-items: center; justify-content: center;
             }
             .current-month-number {
-                font-size: 1.4rem; font-weight: 800; color: #64a19d;
-                width: 80px; text-align: center; margin-right: 15px;
+                font-size: 1.6rem; font-weight: 800; color: #64a19d; width: 80px; text-align: center; margin-right: 20px; font-family: 'Nunito'; text-shadow: 0 2px 4px rgba(100, 161, 157, 0.1);
             }
-            #month-slider { flex-grow: 1; max-width: 85%; cursor: pointer; }
+            input[type=range] { -webkit-appearance: none; width: 100%; flex-grow: 1; background: transparent; }
+            input[type=range]::-webkit-slider-thumb {
+                -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: #64a19d; cursor: pointer; margin-top: -8px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); transition: transform 0.1s;
+            }
+            input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+            input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #e0e0e0; border-radius: 2px; }
 
-            /* --- 悬浮图例样式 --- */
+            /* 悬浮图例 */
             .temp-legend-overlay {
-                position: absolute; bottom: 20px; right: 20px; z-index: 1000;
-                background: rgba(255, 255, 255, 0.9); padding: 12px; border-radius: 8px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.2); text-align: left; display: flex; flex-direction: column;
+                position: absolute; bottom: 30px; right: 30px; z-index: 1000;
+                background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px);
+                padding: 15px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+                border: 1px solid rgba(255,255,255,0.6);
             }
-            .temp-legend-overlay h6 {
-                margin: 0 0 10px 0; font-size: 0.85rem; color: #333; font-weight: bold; text-align: center;
-            }
+            .temp-legend-overlay h6 { margin: 0 0 10px 0; font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 1px; text-align: center; font-family: 'Nunito'; }
             .legend-content { display: flex; align-items: center; }
             #color-ramp {
-                width: 15px; height: 120px;
-                background: linear-gradient(to top, #0000FF 0%, #FFFF00 50%, #FF0000 100%);
-                margin-right: 10px; border: 1px solid #ccc; border-radius: 2px;
+                width: 12px; height: 100px; background: linear-gradient(to top, #0000FF 0%, #FFFF00 50%, #FF0000 100%); margin-right: 12px; border-radius: 6px; opacity: 0.9;
             }
-            .legend-labels {
-                height: 120px; display: flex; flex-direction: column;
-                justify-content: space-between; font-size: 0.75rem; color: #555; line-height: 1;
-            }
+            .legend-labels { height: 100px; display: flex; flex-direction: column; justify-content: space-between; font-size: 0.75rem; color: #555; font-weight: 700; }
 
-            /* --- 播放按钮 --- */
+            /* 播放按钮 */
             .play-control-btn {
-                position: absolute; bottom: 20px; left: 20px; z-index: 1000;
+                position: absolute; bottom: 30px; left: 30px; z-index: 1000;
                 width: 50px; height: 50px; border-radius: 50%;
-                background-color: white; border: none;
-                box-shadow: 0 4px 10px rgba(0,0,0,0.3); color: #64a19d; font-size: 20px;
+                background: linear-gradient(135deg, #64a19d, #4a8b87);
+                border: none; box-shadow: 0 6px 20px rgba(100, 161, 157, 0.4);
+                color: white; font-size: 20px;
                 cursor: pointer; display: flex; align-items: center; justify-content: center;
-                transition: all 0.2s ease;
+                transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             }
-            .play-control-btn:hover { background-color: #f8f9fa; transform: scale(1.1); }
+            .play-control-btn:hover { transform: scale(1.1) rotate(90deg); }
             
-            /* --- 鸟类图例 --- */
-            .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-            .legend-line { width: 20px; height: 3px; display: inline-block; margin-right: 5px; vertical-align: middle; }
+            /* 介绍框 (Tooltip) */
+            .bird-status-tooltip {
+                white-space: normal !important; width: auto; min-width: 220px; max-width: 260px;
+                background-color: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px);
+                border: none; border-left: 5px solid #ccc; border-radius: 6px;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.15); padding: 15px;
+                font-family: 'Nunito', sans-serif; color: #444; opacity: 1 !important;
+            }
+            .leaflet-tooltip-top:before, .leaflet-tooltip-bottom:before, .leaflet-tooltip-left:before, .leaflet-tooltip-right:before { display: none; }
+            .bird-tooltip-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid rgba(0,0,0,0.06); padding-bottom: 6px; }
+            .bird-name { font-size: 1.1rem; font-weight: 800; letter-spacing: -0.5px; }
+            .bird-month-tag { font-size: 0.7rem; background: rgba(0,0,0,0.05); padding: 3px 8px; border-radius: 20px; color: #666; font-weight: 700; }
+            .bird-desc { font-size: 0.9rem; line-height: 1.6; color: #555; text-align: justify; }
+
+            /* 图例点线 */
+            .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+            .legend-line { width: 20px; height: 3px; display: inline-block; margin-right: 6px; vertical-align: middle; border-radius: 2px; }
         </style>
     </head>
     <body id="page-top">
@@ -100,7 +188,7 @@
                 <div class="d-flex justify-content-center">
                     <div class="text-center">
                         <h1 class="mx-auto my-0 text-uppercase">候鸟逐春</h1>
-                        <h2 class="text-white-50 mx-auto mt-2 mb-5">探索中国境内候鸟迁徙与季节温度变化的共舞</h2>
+                        <h2 class="text-white-50 mx-auto mt-2 mb-5">中国候鸟迁徙与气温变化的时空模拟</h2>
                         <a class="btn btn-primary" href="#map-section">开启旅程</a>
                     </div>
                 </div>
@@ -113,9 +201,7 @@
                     <div class="col-lg-8">
                         <h2 class="text-white mb-4">逐温而行：生命的节律</h2>
                         <p class="text-white-50">
-                            候鸟的迁徙是一场对能量与时机的精准计算。为了生存，它们不仅要追随 <strong>5°C - 10°C</strong> 的舒适温区，还要避开拥挤的旧路线，寻找新的食物补给点。
-                            <br><br>
-                            本项目模拟了候鸟的真实迁徙逻辑：<strong>位置随月份推进，路线随飞行延伸</strong>，直观展示了它们如何利用季节风向和气温变化，在中国广袤的土地上画出生命的闭环。
+                            候鸟的迁徙是一场对能量与时机的精准计算。为了生存，它们不仅要追随 <strong>5°C - 10°C</strong> 的舒适温区，还要避开拥挤的旧路线，寻找新的食物补给点。本项目还原了三大候鸟种群的真实迁徙策略。
                         </p>
                     </div>
                 </div>
@@ -127,7 +213,7 @@
                 <div class="row mb-4">
                     <div class="col-12 text-center">
                         <h2 class="text-black">候鸟迁徙全周期模拟</h2>
-                        <p class="text-black-50">点击播放，观察候鸟如何领航路线生长</p>
+                        <p class="text-black-50">点击播放，<strong style="color:#d63384;">悬停圆点</strong> 查看候鸟的实时状态与环境</p>
                     </div>
                 </div>
 
@@ -135,6 +221,47 @@
                     <div class="col-xl-8 col-lg-7 p-0">
                         <div style="position: relative;">
                             <div id="map"></div>
+
+                            <div class="sidebar-wrapper">
+                                <div class="sidebar-trigger-btn" title="查看详细信息">
+                                    <i class="fas fa-info"></i>
+                                </div>
+                                <div class="sidebar-panel">
+                                    <div class="sidebar-content-inner">
+                                        <div class="sidebar-title">代表种群档案</div>
+                                        <div class="bird-mini-card" style="border-left-color: #FF7F50;">
+                                            <div class="bird-mini-title" style="color: #FF7F50;">东线：丹顶鹤</div>
+                                            <div class="bird-mini-text">
+                                                <strong>习性：</strong> 沿海“逐水而居”，依赖芦苇湿地。<br>
+                                                <strong>路线：</strong> 盐城(冬) <i class="fas fa-arrows-alt-v"></i> 扎龙(夏)
+                                            </div>
+                                        </div>
+                                        <div class="bird-mini-card" style="border-left-color: #20c997;">
+                                            <div class="bird-mini-title" style="color: #20c997;">中线：小天鹅</div>
+                                            <div class="bird-mini-text">
+                                                <strong>习性：</strong> 耐力惊人，能跨越内陆干旱区。<br>
+                                                <strong>路线：</strong> 鄱阳湖(冬) <i class="fas fa-arrows-alt-v"></i> 西伯利亚(夏)
+                                            </div>
+                                        </div>
+                                        <div class="bird-mini-card" style="border-left-color: #56ccf2;">
+                                            <div class="bird-mini-title" style="color: #56ccf2;">西线：斑头雁</div>
+                                            <div class="bird-mini-text">
+                                                <strong>习性：</strong> 极强心肺功能，飞越世界屋脊。<br>
+                                                <strong>路线：</strong> 印度(冬) <i class="fas fa-arrows-alt-v"></i> 青海湖(夏)
+                                            </div>
+                                        </div>
+
+                                        <div class="sidebar-title mt-4">图例说明</div>
+                                        <div class="small text-muted" style="line-height: 2;">
+                                            <span class="legend-dot" style="background:#3388ff;"></span>越冬地 (Winter) <br>
+                                            <span class="legend-dot" style="background:#ff3333;"></span>繁殖地 (Breeding) <br>
+                                            <span class="legend-dot" style="background:#ffcc00;"></span>途经地 (Stopover) <br>
+                                            <span class="legend-line" style="background:#666;"></span>北迁 (实线 Spring) <br>
+                                            <span class="legend-line" style="background:#666; border-top: 3px dashed #666; background:none; height:0;"></span>南迁 (虚线 Autumn)
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
                             <button id="play-btn" class="play-control-btn" onclick="togglePlay()" title="播放/暂停">
                                 <i class="fas fa-play"></i>
@@ -157,39 +284,8 @@
                         </div>
                     </div>
                     
-                    <div class="col-xl-4 col-lg-5">
-                        <div class="featured-text text-center text-lg-left" style="padding-left: 30px; height: 100%; display: flex; flex-direction: column; justify-content: center;">
-                            
-                            <h5 class="text-black mb-3 fw-bold">图例说明</h5>
-                            
-                            <div class="mb-4">
-                                <div class="mb-2"><span class="legend-dot" style="background:#3388ff;"></span> <strong>越冬地</strong> <small class="text-muted">(起点)</small></div>
-                                <div class="mb-2"><span class="legend-dot" style="background:#ff3333;"></span> <strong>繁殖地</strong> <small class="text-muted">(终点)</small></div>
-                                <div class="mb-2"><span class="legend-dot" style="background:#ffcc00;"></span> <strong>当前位置</strong> <small class="text-muted">(领航点)</small></div>
-                                <div class="mb-2"><span class="legend-line" style="background:#666;"></span> <strong>北迁 (春)</strong> <small class="text-muted">实线</small></div>
-                                <div class="mb-2"><span class="legend-line" style="background:#666; border-top: 2px dashed #666; background:none; height:0;"></span> <strong>南迁 (秋)</strong> <small class="text-muted">虚线</small></div>
-                            </div>
-
-                            <hr>
-
-                            <h5 class="text-black mb-2 fw-bold">迁徙路线设计</h5>
-                            <ul class="text-black-50 small" style="padding-left: 1.2rem; text-align: left;">
-                                <li class="mb-3">
-                                    <strong style="color:#FF7F50">东线 (丹顶鹤):</strong><br>
-                                    春季沿海北上，秋季略偏内陆避风南下，形成狭长回路。
-                                </li>
-                                <li class="mb-3">
-                                    <strong style="color:#20c997">中线 (小天鹅):</strong><br>
-                                    跨越长江黄河，在大草原上迂回，南北路线明显分离。
-                                </li>
-                                <li class="mb-3">
-                                    <strong style="color:#56ccf2">西线 (斑头雁):</strong><br>
-                                    围绕青藏高原边缘飞行，利用不同山口穿越喜马拉雅。
-                                </li>
-                            </ul>
-
+                    <div class="col-xl-4 col-lg-5 d-none d-lg-block" style="min-height: 700px;">
                         </div>
-                    </div>
                 </div>
             </div>
         </section>
@@ -221,72 +317,69 @@
         <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
 
         <script>
-            // --- 1. 初始化地图 ---
+            // --- 1. 初始化地图 (使用 CartoDB Positron 极简底图) ---
             const TILE_BASE_URL = './tiles/2024-'; 
             var map = L.map('map', { scrollWheelZoom: false }).setView([36.0, 104.0], 4);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19, attribution: '© OpenStreetMap', zIndex: 0 
+            
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                subdomains: 'abcd', maxZoom: 19
             }).addTo(map);
 
             var birdsLayerGroup = L.layerGroup().addTo(map);
             let currentTemperatureLayer = null;
 
-            // --- 2. 候鸟精细化数据 (回路设计：坐标微调以防重合) ---
-            // 结构：12个月的坐标点。确保春季(3-5)和秋季(9-11)的经度/纬度有偏差。
+            // --- 2. 候鸟深度数据 ---
             const birdData = {
                 east: {
-                    name: "丹顶鹤",
-                    color: "#FF7F50", // 珊瑚红
-                    // 12个月位置 [Lat, Lng]
-                    monthlyPos: [
-                        [33.38, 120.13], // 1月: 盐城 (起点)
-                        [33.38, 120.13], // 2月: 盐城
-                        [36.50, 119.50], // 3月: 山东日照 (北上偏东/沿海)
-                        [40.00, 120.50], // 4月: 渤海湾北岸
-                        [47.20, 124.25], // 5月: 扎龙 (抵达)
-                        [47.20, 124.25], // 6月: 扎龙
-                        [47.20, 124.25], // 7月: 扎龙
-                        [47.20, 124.25], // 8月: 扎龙
-                        [44.50, 122.00], // 9月: 内蒙通辽 (南下偏西/内陆)
-                        [38.00, 117.50], // 10月: 沧州/黄骅
-                        [34.50, 118.50], // 11月: 连云港内陆侧
-                        [33.38, 120.13]  // 12月: 盐城 (闭环)
+                    name: "丹顶鹤", color: "#FF7F50", // 珊瑚红
+                    monthlyData: [
+                        { pos: [33.38, 120.13], desc: "<b>[越冬·盐城]</b> 在芦苇丛中通过吞食鱼虾积累脂肪，为春季北迁储备能量。" },
+                        { pos: [33.50, 120.20], desc: "<b>[越冬末期]</b> 随着日照延长，鹤群开始活跃，进行北迁前的集结与配对。" },
+                        { pos: [37.75, 118.95], desc: "<b>[北迁·黄河口]</b> 飞抵黄河三角洲停歇。新生的芦苇嫩芽是其最爱的“加油站”。" },
+                        { pos: [41.12, 121.12], desc: "<b>[北迁·辽宁]</b> 途经盘锦红海滩。随着5°C等温线北移，加速穿越环渤海地区。" },
+                        { pos: [47.20, 124.25], desc: "<b>[抵达·扎龙]</b> 终于到达黑龙江繁殖地。北方冰雪消融，开始在深水芦苇丛中筑巢。" },
+                        { pos: [47.30, 124.30], desc: "<b>[繁殖期]</b> 正在孵化卵。双亲轮流值守，利用芦苇作为天然屏障。" },
+                        { pos: [47.25, 124.20], desc: "<b>[育雏期]</b> 雏鸟破壳而出。跟随亲鸟在浅水中学习觅食。" },
+                        { pos: [47.00, 124.00], desc: "<b>[练飞期]</b> 幼鸟羽翼渐丰。家族群开始集结，准备迎接即将到来的寒潮。" },
+                        { pos: [44.50, 122.00], desc: "<b>[南迁·吉林]</b> 气温骤降，避开寒冷的沿海风口，选择内陆的莫莫格湿地停歇。" },
+                        { pos: [38.00, 117.50], desc: "<b>[南迁·河北]</b> 途经沧州沿海。借助秋季强劲的北风，滑翔跨越华北平原。" },
+                        { pos: [34.50, 118.50], desc: "<b>[南迁·江苏]</b> 抵达连云港。这是回到越冬地前的最后一站，稍作休整。" },
+                        { pos: [33.38, 120.13], desc: "<b>[回归·盐城]</b> 完成生命闭环。回到温暖的南方湿地，安度寒冬。" }
                     ]
                 },
                 mid: {
-                    name: "小天鹅",
-                    color: "#20c997", // 海藻绿
-                    monthlyPos: [
-                        [29.10, 116.68], // 1月: 鄱阳湖
-                        [29.10, 116.68], // 2月: 鄱阳湖
-                        [34.00, 114.00], // 3月: 郑州附近 (北上直线)
-                        [41.00, 113.00], // 4月: 乌兰察布
-                        [50.00, 105.00], // 5月: 贝加尔湖南岸 (抵达)
-                        [50.00, 105.00], // 6月: 繁殖
-                        [50.00, 105.00], // 7月: 繁殖
-                        [50.00, 105.00], // 8月: 繁殖
-                        [45.00, 116.00], // 9月: 锡林郭勒 (南下大弯道-偏东)
-                        [37.00, 116.50], // 10月: 山东德州
-                        [31.00, 117.50], // 11月: 安徽池州
-                        [29.10, 116.68]  // 12月: 鄱阳湖
+                    name: "小天鹅", color: "#20c997", // 海藻绿
+                    monthlyData: [
+                        { pos: [29.10, 116.68], desc: "<b>[越冬·鄱阳湖]</b> 枯水期的鄱阳湖是天堂。利用长颈挖掘浅滩下的沉水植物块茎。" },
+                        { pos: [30.00, 115.50], desc: "<b>[越冬·龙感湖]</b> 随着水位变化，在长江中下游湖泊群间短距离迁移寻找食物。" },
+                        { pos: [34.80, 113.50], desc: "<b>[北迁·黄河]</b> 飞越黄河。在三门峡库区停歇，补充体能应对干旱航程。" },
+                        { pos: [41.00, 113.00], desc: "<b>[北迁·内蒙]</b> 飞越干旱的内蒙古草原。在岱海等少数湖泊停歇补水。" },
+                        { pos: [50.00, 105.00], desc: "<b>[北迁·出境]</b> 抵达贝加尔湖南岸，此时北方冰雪刚刚开始融化。" },
+                        { pos: [53.00, 108.00], desc: "<b>[抵达·苔原]</b> 到达西伯利亚繁殖地。在极昼的阳光下快速筑巢。" },
+                        { pos: [54.00, 109.00], desc: "<b>[育雏高峰]</b> 北极苔原爆发式生长的昆虫提供了丰富蛋白质，雏鸟需快速长大。" },
+                        { pos: [53.50, 108.50], desc: "<b>[换羽期]</b> 成鸟更换飞羽，暂时失去飞行能力。幼鸟练习长距离飞行。" },
+                        { pos: [45.00, 116.00], desc: "<b>[南迁·草原]</b> 寒流来袭。选择偏东路线，经由锡林郭勒草原快速南下。" },
+                        { pos: [37.00, 116.50], desc: "<b>[南迁·山东]</b> 途经德州。在黄河故道湿地停歇，等待适宜气流飞越黄河。" },
+                        { pos: [31.00, 117.50], desc: "<b>[南迁·安徽]</b> 抵达升金湖。长江中下游进入枯水期，露出的滩涂是理想着陆场。" },
+                        { pos: [29.10, 116.68], desc: "<b>[回归·鄱阳湖]</b> 家族群团聚。万鸟齐鸣，享受南方温暖湿润的冬季。" }
                     ]
                 },
                 west: {
-                    name: "斑头雁",
-                    color: "#56ccf2", // 天际蓝
-                    monthlyPos: [
-                        [27.20, 88.00],  // 1月: 印度/锡金边境
-                        [27.20, 88.00],  // 2月: 越冬
-                        [30.00, 91.00],  // 3月: 拉萨 (北上偏东路线)
-                        [34.00, 95.00],  // 4月: 昆仑山口东
-                        [36.80, 100.20], // 5月: 青海湖
-                        [36.80, 100.20], // 6月: 青海湖
-                        [36.80, 100.20], // 7月: 青海湖
-                        [36.80, 100.20], // 8月: 青海湖
-                        [34.00, 92.00],  // 9月: 唐古拉山口 (南下偏西路线)
-                        [30.00, 85.00],  // 10月: 昂拉仁错
-                        [28.00, 84.00],  // 11月: 尼泊尔安纳普尔纳
-                        [27.20, 88.00]   // 12月: 回到起点
+                    name: "斑头雁", color: "#56ccf2", // 天际蓝
+                    monthlyData: [
+                        { pos: [27.20, 88.00], desc: "<b>[越冬·南亚]</b> 在印度与尼泊尔交界低地越冬。气候温暖，农田提供充足谷物。" },
+                        { pos: [27.20, 88.00], desc: "<b>[集结]</b> 在喜马拉雅山南麓盘旋，等待季风带来的上升气流，准备挑战高峰。" },
+                        { pos: [30.00, 91.00], desc: "<b>[翻越巅峰]</b> 奇迹时刻！8小时内从海拔1000米升至8000米，飞越喜马拉雅山脉。" },
+                        { pos: [34.00, 95.00], desc: "<b>[北迁·高原]</b> 穿越无人区。途经昆仑山口，凭借厚实羽绒抵御严寒。" },
+                        { pos: [36.80, 100.20], desc: "<b>[抵达·青海湖]</b> 到达繁殖地。利用湖心岛隔绝陆地捕食者，开始安全的筑巢。" },
+                        { pos: [37.00, 100.00], desc: "<b>[孵化期]</b> 青海湖进入夏季，湖中湟鱼回游提供丰富营养，是育儿天堂。" },
+                        { pos: [36.90, 100.40], desc: "<b>[育雏期]</b> 成鸟带领雏鸟在湖边草甸觅食，雏鸟此时只能游泳躲避天敌。" },
+                        { pos: [36.80, 100.20], desc: "<b>[练飞期]</b> 幼鸟羽翼丰满。开始在青海湖上空进行编队飞行训练。" },
+                        { pos: [34.00, 92.00], desc: "<b>[南迁·唐古拉]</b> 高原严冬将至。沿偏西路线，经由唐古拉山口向南撤离。" },
+                        { pos: [30.00, 85.00], desc: "<b>[南迁·河谷]</b> 途经昂拉仁错。在雅鲁藏布江上游河谷休整，准备二次翻越喜马拉雅。" },
+                        { pos: [28.00, 84.00], desc: "<b>[飞越·干城章嘉]</b> 再次挑战极高山。借助秋季北风，高速俯冲越过雪山。" },
+                        { pos: [27.20, 88.00], desc: "<b>[回归·南亚]</b> 在温暖的河谷平原降落。结束惊心动魄的高原往返之旅。" }
                     ]
                 }
             };
@@ -301,9 +394,7 @@
                 });
                 nextLayer.addTo(map);
 
-                if (nextLayer.getContainer()) {
-                    nextLayer.getContainer().style.transition = 'opacity 0.5s linear';
-                }
+                if (nextLayer.getContainer()) nextLayer.getContainer().style.transition = 'opacity 0.5s linear';
                 setTimeout(() => { nextLayer.setOpacity(0.7); }, 20);
 
                 if (currentTemperatureLayer) {
@@ -319,150 +410,95 @@
                 updateBirdMigration(monthIndex);
             }
 
-            // --- 4. 核心：动态生长路径绘制 ---
+            // --- 4. 核心：绘制逐月变化的路线与状态 ---
             function updateBirdMigration(month) {
                 birdsLayerGroup.clearLayers(); 
 
                 Object.values(birdData).forEach(bird => {
-                    const points = bird.monthlyPos;
-                    // 翻转坐标为 [Lng, Lat] 用于 Turf
-                    const turfPoints = points.map(p => [p[1], p[0]]);
-                    
-                    // --- A. 绘制当前位置鸟 ---
-                    // 始终显示当前月份的鸟位置
-                    const currentPos = points[month - 1]; 
-                    let markerColor = bird.color;
-                    let markerRadius = 6;
+                    const monthData = bird.monthlyData[month - 1];
+                    const currentPos = monthData.pos; 
+                    const currentDesc = monthData.desc;
+                    const turfPoints = bird.monthlyData.map(d => [d.pos[1], d.pos[0]]); // [Lng, Lat]
 
-                    // 根据月份定义状态 (图标颜色)
-                    if (month <= 2 || month >= 12) { // 越冬
-                        markerColor = "#3388ff"; 
-                    } else if (month >= 5 && month <= 8) { // 繁殖
-                        markerColor = "#ff3333"; 
-                    } else { // 迁徙途经 (3,4, 9,10,11)
-                        markerColor = "#ffcc00"; 
-                        markerRadius = 5; 
-                    }
+                    // 图标样式
+                    let markerColor, markerRadius;
+                    if (month <= 2 || month >= 12) { markerColor = "#3388ff"; markerRadius = 6; } 
+                    else if (month >= 5 && month <= 8) { markerColor = "#ff3333"; markerRadius = 6; } 
+                    else { markerColor = "#ffcc00"; markerRadius = 5; }
 
-                    // 绘制“领航鸟”
-                    L.circleMarker(currentPos, {
-                        radius: markerRadius,
-                        fillColor: markerColor,
-                        color: "#fff",
-                        weight: 2,
-                        opacity: 1,
-                        fillOpacity: 1
-                    }).bindPopup(`<b>${bird.name}</b>`).addTo(birdsLayerGroup);
+                    // A. 绘制当前位置图标 (含呼吸特效 + 个性化Tooltip)
+                    const pulseIcon = L.divIcon({
+                        className: '',
+                        html: `<div class="bird-pulse-icon" style="background:${markerColor}; border-color:${markerColor}; color:${markerColor}"></div>`,
+                        iconSize: [14, 14], iconAnchor: [7, 7]
+                    });
 
+                    L.marker(currentPos, { icon: pulseIcon })
+                    .bindTooltip(
+                        `<div class="bird-tooltip-header" style="border-bottom-color:${bird.color}">
+                            <span class="bird-name" style="color:${bird.color}">${bird.name}</span>
+                            <span class="bird-month-tag">${month}月</span>
+                         </div>
+                         <div class="bird-tooltip-desc">${currentDesc}</div>`, 
+                        { direction: 'top', sticky: true, className: 'bird-status-tooltip', offset: [0, -10] }
+                    )
+                    .on('add', function(e) { 
+                        const tip = this.getTooltip();
+                        if(tip && tip._container) tip._container.style.borderLeftColor = bird.color;
+                    })
+                    .addTo(birdsLayerGroup);
 
-                    // --- B. 路径生长逻辑 (Path Growing) ---
-                    
-                    // 1. 春季北上实线 (3月开始生长)
+                    // B. 路径生长 (北迁实线 3-8月)
                     if (month >= 3) {
-                        // 截取点：从1月(index 0) 到 当前月(或5月截止)
-                        // 这里的逻辑是：只要没到南迁(9月)，实线就跟着月份长
-                        // 到了9月后，实线固定在5月的位置(繁殖地)，不再动
-                        let endIndex = Math.min(month - 1, 4); // 4是5月(index)
-                        
-                        // 如果还在2月，endIndex=1，刚好画出一点头。
-                        // 我们构建一个 path segment
-                        let pathSegment = turfPoints.slice(1, endIndex + 1); // 从2月位置开始画
-                        
-                        // 必须加上起点(1月)才能连线
-                        pathSegment.unshift(turfPoints[0]);
+                        let endIndex = Math.min(month - 1, 7);
+                        let rawPath = turfPoints.slice(1, endIndex + 1);
+                        rawPath.unshift(turfPoints[0]);
+                        // 智能去重，防Turf报错
+                        let filteredPath = rawPath.filter((pt, i) => i===0 || !(pt[0]===rawPath[i-1][0] && pt[1]===rawPath[i-1][1]));
 
-                        if (pathSegment.length >= 2) {
-                            const line = turf.lineString(pathSegment);
-                            // 贝塞尔曲线平滑
+                        if (filteredPath.length >= 2) {
+                            const line = turf.lineString(filteredPath);
                             const curved = turf.bezierSpline(line, {resolution: 10000, sharpness: 0.5});
-                            
-                            L.geoJSON(curved, {
-                                style: {
-                                    color: bird.color,
-                                    weight: 3,
-                                    opacity: 0.8,
-                                    lineCap: 'round' // 实线
-                                }
-                            }).addTo(birdsLayerGroup);
+                            L.geoJSON(curved, { style: { color: bird.color, weight: 3, opacity: 0.8, lineCap: 'round' } }).addTo(birdsLayerGroup);
                         }
                     }
 
-                    // 2. 秋季南下虚线 (9月开始生长)
+                    // C. 路径生长 (南迁流光虚线 9月起)
                     if (month >= 9) {
-                        // 截取点：从8月(index 7) 到 当前月
                         let endIndex = month - 1;
-                        let pathSegment = turfPoints.slice(7, endIndex + 1);
-                        
-                        // 加上8月的起点
-                        // 注意：这里的起点其实是繁殖地位置
-                        // 为了视觉连续，我们取index 7 (8月位置)作为起始
-                        // 我们的 monthlyPos[7] 是繁殖地
-                        
-                        // pathSegment 已经包含了 slice(7...) 即 [8月, 9月...]
-                        // 所以不需要 unshift 额外的点，slice(7, 9) 就是 [8月点, 9月点] 两个点
+                        let rawPath = turfPoints.slice(7, endIndex + 1);
+                        let filteredPath = rawPath.filter((pt, i) => i===0 || !(pt[0]===rawPath[i-1][0] && pt[1]===rawPath[i-1][1]));
 
-                        if (pathSegment.length >= 2) {
-                            const line = turf.lineString(pathSegment);
+                        if (filteredPath.length >= 2) {
+                            const line = turf.lineString(filteredPath);
                             const curved = turf.bezierSpline(line, {resolution: 10000, sharpness: 0.5});
-                            
-                            L.geoJSON(curved, {
-                                style: {
-                                    color: bird.color,
-                                    weight: 3,
-                                    opacity: 0.8,
-                                    dashArray: '5, 8', // 虚线
-                                    lineCap: 'butt'
-                                }
+                            L.geoJSON(curved, { 
+                                style: { color: bird.color, weight: 3, opacity: 0.8, dashArray: '6, 10', lineCap: 'butt', className: 'migration-line-flow' } 
                             }).addTo(birdsLayerGroup);
                         }
                     }
 
-                    // 3. 辅助常驻点 (起点/终点)
-                    // 始终显示越冬地起点
-                    L.circleMarker(points[0], { radius: 3, color: bird.color, fillColor: "#3388ff", fillOpacity: 0.5, weight: 0 }).addTo(birdsLayerGroup);
-                    // 5月后显示繁殖地终点
-                    if(month >= 5) {
-                        L.circleMarker(points[4], { radius: 3, color: bird.color, fillColor: "#ff3333", fillOpacity: 0.5, weight: 0 }).addTo(birdsLayerGroup);
-                    }
-
+                    // D. 辅助常驻点
+                    if(month >= 1) L.circleMarker(turfPoints[0].reverse(), { radius: 3, color: bird.color, fillColor: "#3388ff", fillOpacity: 0.5, weight: 0 }).addTo(birdsLayerGroup);
+                    if(month >= 5) L.circleMarker(turfPoints[4].reverse(), { radius: 3, color: bird.color, fillColor: "#ff3333", fillOpacity: 0.5, weight: 0 }).addTo(birdsLayerGroup);
                 });
             }
 
             // --- 5. 播放控制 ---
             const slider = document.getElementById('month-slider');
             updateTemperatureLayer(parseInt(slider.value)); 
-
-            let isPlaying = false;
-            let playInterval = null;
-
-            function togglePlay() {
-                const btn = document.getElementById('play-btn');
-                if (isPlaying) { stopPlay(); } else { startPlay(); }
-            }
-
+            let isPlaying = false; let playInterval = null;
+            function togglePlay() { isPlaying ? stopPlay() : startPlay(); }
             function startPlay() {
-                isPlaying = true;
-                document.getElementById('play-btn').innerHTML = '<i class="fas fa-pause"></i>'; 
+                isPlaying = true; document.getElementById('play-btn').innerHTML = '<i class="fas fa-pause"></i>'; 
                 playInterval = setInterval(() => {
-                    let currentVal = parseInt(slider.value);
-                    let nextVal = currentVal + 1;
+                    let nextVal = parseInt(slider.value) + 1;
                     if (nextVal > 12) nextVal = 1;
-                    slider.value = nextVal;
-                    updateTemperatureLayer(nextVal);
-                }, 1200); // 稍慢一点(1.2s)让眼睛能跟上路线生长
+                    slider.value = nextVal; updateTemperatureLayer(nextVal);
+                }, 1500); 
             }
-
-            function stopPlay() {
-                isPlaying = false;
-                clearInterval(playInterval);
-                document.getElementById('play-btn').innerHTML = '<i class="fas fa-play"></i>'; 
-            }
-
-            slider.addEventListener('input', function() {
-                if (isPlaying) stopPlay();
-                updateTemperatureLayer(parseInt(this.value));
-            });
-            
+            function stopPlay() { isPlaying = false; clearInterval(playInterval); document.getElementById('play-btn').innerHTML = '<i class="fas fa-play"></i>'; }
+            slider.addEventListener('input', function() { if (isPlaying) stopPlay(); updateTemperatureLayer(parseInt(this.value)); });
             window.addEventListener('resize', function() { map.invalidateSize(); });
         </script>
     </body>
