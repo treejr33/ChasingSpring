@@ -140,7 +140,7 @@
                         </div>
                     </div>
                     
-                    <div class="col-xl-4 col-lg-3 d-none d-lg-block"></div>
+                    <div class="col-xl-3 col-lg-3 d-none d-lg-block"></div>
                     
                     <div class="col-12">
                         <div class="slider-container-bottom">
@@ -285,6 +285,33 @@
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
                 attribution: '&copy; OpenStreetMap, &copy; CARTO'
             }).addTo(map);
+
+            // --- [新增] 台湾地区灰色遮罩 (开始) ---
+            var taiwanGeoJson = {
+                "type": "Feature",
+                "properties": { "name": "Taiwan" },
+                "geometry": {
+                    "type": "MultiPolygon",
+                    "coordinates": [[[[121.941406,24.753232],[121.931641,24.612845],[121.819824,24.359554],[121.554199,24.114166],[121.583496,23.634487],[121.439453,23.153114],[120.878906,21.930295],[120.839355,21.945431],[120.727539,22.385658],[120.588867,22.583643],[120.169922,23.17303],[120.070312,23.561461],[120.18457,23.893395],[120.406738,24.211687],[120.588867,24.487149],[120.816895,24.843937],[121.039062,25.058106],[121.510254,25.292033],[121.858887,25.162677],[122.004883,25.120819],[121.941406,24.753232]]]]
+                }
+            };
+
+            L.geoJSON(taiwanGeoJson, {
+                style: function (feature) {
+                    return {
+                        fillColor: '#808080', // 灰色填充
+                        fillOpacity: 0.7,     // 填充不透明度
+                        color: '#666666',     // 边框颜色
+                        weight: 1,            // 边框宽度
+                        opacity: 1            // 边框不透明度
+                    };
+                },
+                onEachFeature: function (feature, layer) {
+                    // 可选：添加鼠标悬停提示
+                    // layer.bindTooltip("台湾地区 / Taiwan Region", { sticky: true });
+                }
+            }).addTo(map);
+            // --- [新增] 台湾地区灰色遮罩 (结束) ---
 
             var historyLayerGroup = L.layerGroup().addTo(map);
             let currentTemperatureLayer = null;
