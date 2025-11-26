@@ -116,12 +116,20 @@ section.about-section {
 section.about-section h2 { color: #ffffff; text-shadow: 0 4px 10px rgba(0,0,0,0.8); margin-bottom: 2rem; }
 section.about-section p { color: rgba(255,255,255,0.9); text-shadow: 0 2px 5px rgba(0,0,0,0.8); line-height: 2; max-width: 800px; margin-left: auto; margin-right: auto; }
 
-section.projects-section { position: relative; z-index: 20; background-color: #f4f4f4; padding: 5rem 0; }
+section.projects-section { 
+    position: relative; 
+    z-index: 20; 
+    background-color: #f4f4f4; /* 保持浅灰色背景 */
+    padding: 5rem 0; 
+    overflow: hidden; 
+}
+
 section.signup-section { position: relative; z-index: 20; background: #000; padding: 4rem 0; }
 
 #map { 
     width: 100%; height: 700px; background-color: #ebedef; border-radius: 8px; 
     box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    position: relative; z-index: 10; 
 }
 
 .btn-primary {
@@ -138,11 +146,15 @@ section.signup-section { position: relative; z-index: 20; background: #000; padd
     box-shadow: 0 5px 15px rgba(0,0,0,0.2); transition: all 0.3s;
 }
 .sidebar-panel {
-    width: 300px; background: rgba(255,255,255,0.98); backdrop-filter: blur(12px); 
+    width: 300px; 
+    background: rgba(255, 255, 255, 0.95); 
+    backdrop-filter: blur(12px); 
     border-radius: 8px; margin-left: 12px; padding: 15px;
     position: absolute; top: 0; left: 40px; opacity: 0; pointer-events: none; 
     transform: translateX(-10px); transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1); 
-    box-shadow: 0 10px 40px rgba(0,0,0,0.15); text-align: left; font-size: 0.85rem;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    text-align: left; font-size: 0.85rem;
 }
 .sidebar-wrapper:hover .sidebar-panel { opacity: 1; pointer-events: auto; transform: translateX(0); }
 
@@ -157,12 +169,13 @@ section.signup-section { position: relative; z-index: 20; background: #000; padd
 .bird-mini-title { font-weight: 700; font-size: 0.85rem; margin-bottom: 2px; }
 .bird-mini-text { font-size: 0.75rem; color: #666; line-height: 1.4; }
 .legend-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size: 0.75rem; color: #555; }
-.legend-item { display: flex; align-items: center; }
+.legend-item { display: flex; align-items: center; font-weight: 600; text-shadow: 1px 1px 0 #fff; }
 
 /* Slider & Play */
 .slider-container-bottom {
     background: white; padding: 15px 30px; border-radius: 50px; margin-top: 20px;
     box-shadow: 0 5px 20px rgba(0,0,0,0.05); display: flex; align-items: center;
+    position: relative; z-index: 10;
 }
 .play-control-btn {
     position: absolute; bottom: 30px; left: 30px; z-index: 1000;
@@ -193,7 +206,6 @@ section.signup-section { position: relative; z-index: 20; background: #000; padd
    5. [核心] 几何候鸟与轨迹
    ========================================= */
 
-/* 历史轨迹点 */
 .history-dot {
     width: 8px; height: 8px; border-radius: 50%;
     border: 1px solid rgba(255,255,255,0.8); 
@@ -201,33 +213,143 @@ section.signup-section { position: relative; z-index: 20; background: #000; padd
     box-shadow: 0 0 4px rgba(0,0,0,0.3); opacity: 0.8;
 }
 
-/* [重点] 候鸟图标的外层容器 (由 Leaflet 创建) 
-   在这里添加 transition，实现地图上的位置平滑移动 
-   1.5s 对应 JS 定时器的时间间隔，linear 保证匀速直线飞行
-*/
 .bird-icon-wrapper {
     transition: transform 1.5s linear;
-    /* 必须加上 will-change 提升性能，防止抖动 */
     will-change: transform; 
-    pointer-events: none; /* 防止遮挡下方交互 */
+    pointer-events: none;
 }
 
-/* 候鸟图标的内部容器
-   负责处理：漂浮动画 + 旋转 (JS控制旋转角度) 
-*/
 .geo-bird-icon {
     filter: drop-shadow(0 5px 10px rgba(0,0,0,0.3)); 
-    transition: transform 0.5s ease-out; /* 旋转时的平滑过渡 */
-    animation: floatBird 3s ease-in-out infinite; /* 自身上下漂浮 */
+    transition: transform 0.5s ease-out;
+    animation: floatBird 3s ease-in-out infinite;
     width: 100%; height: 100%;
 }
 
-/* 上下漂浮动画 */
 @keyframes floatBird {
     0%, 100% { margin-top: 0; }
     50% { margin-top: -8px; }
 }
 
+/* =========================================
+   6. 水平图层过滤器
+   ========================================= */
+
+.map-filter-control {
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    padding: 8px 15px;
+    border-radius: 50px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    font-family: 'Montserrat', sans-serif;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 15px;
+}
+
+.filter-title {
+    font-size: 0.75rem; font-weight: 800; color: #2c3e50;
+    margin-bottom: 0; padding-bottom: 0; padding-right: 10px;
+    border-right: 1px solid #ddd; margin-right: 5px;
+    text-transform: uppercase; white-space: nowrap;
+}
+
+.filter-item {
+    display: flex; align-items: center; cursor: pointer;
+    transition: opacity 0.3s; margin-bottom: 0;
+}
+.filter-item:hover { opacity: 0.8; }
+
+.filter-checkbox {
+    width: 14px; height: 14px; border-radius: 3px; margin-right: 6px;
+    position: relative; border: 2px solid #ddd; transition: all 0.2s;
+}
+.filter-item.active .filter-checkbox { border-color: transparent; }
+.filter-item.active .filter-checkbox::after {
+    content: ''; position: absolute; top: 2px; left: 2px; right: 2px; bottom: 2px;
+    background: white; opacity: 0.3;
+}
+.filter-label { font-size: 0.8rem; font-weight: 600; color: #555; white-space: nowrap; }
+
+
+/* =========================================
+   7. [核心修改] 背景图片交互与视觉融合效果
+   ========================================= */
+
+.section-bg-layer {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 0; pointer-events: none; overflow: hidden;
+}
+
+/* 通用图片样式：添加滤镜和遮罩 */
+.bg-bird-img {
+    position: absolute;
+    background-size: contain; /* 或 cover */
+    background-repeat: no-repeat;
+    background-position: center;
+    opacity: 0;
+    /* 入场动画 */
+    transform: translateX(30px) scale(1.05); 
+    
+    /* [新增] 视觉融合效果核心 */
+    /* 1. 滤镜：稍微降低饱和度和对比度，让图片更柔和，不抢眼 */
+    filter: grayscale(20%) contrast(90%) sepia(10%);
+    
+    /* 2. 遮罩羽化：使用径向渐变让图片边缘柔和地消失在背景中 */
+    /* Webkit 浏览器 (Chrome, Safari) */
+    -webkit-mask-image: radial-gradient(ellipse at center, black 60%, transparent 75%);
+    /* 标准语法 */
+    mask-image: radial-gradient(ellipse at center, black 60%, transparent 75%);
+    
+    /* 3. 过渡效果：加入 filter 的过渡 */
+    transition: opacity 1s ease-in-out, transform 1.5s cubic-bezier(0.25, 1, 0.5, 1), filter 1s ease;
+}
+
+/* 激活状态 */
+.bg-bird-img.active {
+    opacity: 0.9; /* [修改] 降低最大不透明度，让背景更透气，不要设为 1 */
+    transform: translateX(0) scale(1);
+    /* 激活时稍微恢复一点色彩，增加动态感 */
+    filter: grayscale(10%) contrast(95%) sepia(5%);
+}
+
+
+/* --- [用户控制区] 调整图片的大小和位置 --- */
+
+/* 1. 丹顶鹤 (东线) */
+#bg-img-east {
+    top: 45%;       
+    right: -5%;    /* 让它稍微出界一点，羽化效果更好看 */
+    width: 30%;     
+    height: 50%;    
+    
+    /* 可以为特定图片单独调整遮罩中心 */
+    /*-webkit-mask-position: 60% 50%; 
+    mask-position: 60% 50%;
+    */
+}
+
+/* 2. 小天鹅 (中线) */
+#bg-img-mid {
+    top: -15%;
+    right: -1%;
+    width: 40%;
+    height: 60%;
+
+}
+
+/* 3. 斑头雁 (西线) */
+#bg-img-west {
+    top: 41%;
+    right: 81%;
+    width: 22%;
+    height: 33%;
+}
+
 @media (max-width: 768px) {
     .lang-switch-btn { top: 15px; right: 60px; }
+    .section-bg-layer { display: none; } /* 移动端隐藏 */
+    .map-filter-control { flex-wrap: wrap; justify-content: center; gap: 10px; }
+    .filter-title { border-right: none; width: 100%; text-align: center; margin-bottom: 5px; padding-right: 0; margin-right: 0; }
 }

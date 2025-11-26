@@ -4,7 +4,7 @@
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
         <meta name="description" content="Spring Chasers - Bird Migration Visualization" />
-        <title>候鸟逐春 Spring Chasers</title>
+        <title>候鸟逐春 Chasing Spring</title>
         
         <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
         
@@ -97,20 +97,30 @@
         </section>
         
         <section class="projects-section" id="map-section">
-            <div class="container px-4 px-lg-5">
+            
+            <div class="section-bg-layer">
+                <div id="bg-img-east" class="bg-bird-img active" 
+                     style="background-image: url('assets/img/crane.png');"></div>
+                <div id="bg-img-mid" class="bg-bird-img active" 
+                     style="background-image: url('assets/img/swan.png');"></div>
+                <div id="bg-img-west" class="bg-bird-img active" 
+                     style="background-image: url('assets/img/goose.png');"></div>
+            </div>
+
+            <div class="container px-4 px-lg-5" style="position: relative; z-index: 5;">
                 <div class="text-center mb-5">
                     <h2 class="text-black brand-font">
                         <span class="lang-zh">候鸟迁徙全周期模拟</span>
                         <span class="lang-en">Annual Cycle Simulation</span>
                     </h2>
                     <p class="text-muted">
-                        <span class="lang-zh">点击播放，<strong style="color:#64a19d;">悬停几何图标</strong> 查看实时状态</span>
-                        <span class="lang-en">Press Play to start. <strong style="color:#64a19d;">Hover</strong> over birds for live status.</span>
+                        <span class="lang-zh">点击播放，<strong style="color:#64a19d;">悬停几何图标</strong> 查看实时状态，<strong style="color:#64a19d;">点击右上角</strong> 筛选线路</span>
+                        <span class="lang-en">Press Play to start. <strong style="color:#64a19d;">Hover</strong> over birds for status. Filter routes via <strong style="color:#64a19d;">Top-Right</strong> control.</span>
                     </p>
                 </div>
 
                 <div class="row gx-0 mb-5">
-                    <div class="col-xl-8 col-lg-7 p-0 position-relative">
+                    <div class="col-xl-9 col-lg-9 p-0 position-relative">
                         <div id="map"></div>
 
                         <div class="sidebar-wrapper">
@@ -130,7 +140,7 @@
                         </div>
                     </div>
                     
-                    <div class="col-xl-4 col-lg-5 d-none d-lg-block" style="min-height: 700px;"></div>
+                    <div class="col-xl-4 col-lg-3 d-none d-lg-block"></div>
                     
                     <div class="col-12">
                         <div class="slider-container-bottom">
@@ -159,7 +169,7 @@
         </section>
 
         <footer class="footer bg-black small text-center text-white-50 py-4">
-            <div class="container">Copyright &copy; Spring Chasers 2025</div>
+            <div class="container">Copyright &copy; Spring Chasers 2025 | Tiles &copy; CARTO & OSM</div>
         </footer>
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -174,8 +184,15 @@
             
             // 存储候鸟 Marker 实例
             const birdMarkers = {}; 
-            // [新增] 存储绘制路线的定时器，用于清除未完成的动画
+            // 存储绘制路线的定时器，用于清除未完成的动画
             let routeDrawTimeouts = [];
+
+            // 线路状态管理
+            const activeRoutes = {
+                east: true,
+                mid: true,
+                west: true
+            };
 
             // --- 1. 语言切换 ---
             function toggleLanguage() {
@@ -190,6 +207,8 @@
                     body.classList.remove('en-mode');
                     btnText.textContent = 'EN'; 
                 }
+                // 刷新所有组件
+                updateFilterUI(); 
                 updateBirdMigration(currentMonth);
                 renderSidebar(); 
                 updateMonthLabel();
@@ -267,22 +286,83 @@
                 attribution: '&copy; OpenStreetMap, &copy; CARTO'
             }).addTo(map);
 
-            // 历史图层(可清空)
             var historyLayerGroup = L.layerGroup().addTo(map);
-            
             let currentTemperatureLayer = null;
 
-            // --- 4. 几何鸟图标 SVG 生成 ---
+            // --- [修改] 横向过滤器自定义控件 ---
+            var filterControl = L.control({position: 'topright'});
+            
+            filterControl.onAdd = function (map) {
+                var div = L.DomUtil.create('div', 'map-filter-control');
+                L.DomEvent.disableClickPropagation(div); 
+                div.id = 'map-filter-ui'; 
+                return div;
+            };
+            
+            filterControl.addTo(map);
+
+            // 刷新过滤器UI的函数 (横向布局适配)
+            function updateFilterUI() {
+                const container = document.getElementById('map-filter-ui');
+                if (!container) return;
+
+                const title = currentLang === 'zh' ? '线路筛选' : 'Route Filter';
+                // 注意：这里的 CSS 已经设为 flex-row，所以 div 会自动横向排列
+                let html = `<div class="filter-title">${title}</div>`;
+
+                Object.entries(birdData).forEach(([key, bird]) => {
+                    const nameFull = currentLang === 'zh' ? bird.name_zh : bird.name_en;
+                    const name = nameFull.split(/[:：]/)[0]; 
+                    
+                    const isActive = activeRoutes[key] ? 'active' : '';
+                    const color = bird.color;
+                    const bgStyle = activeRoutes[key] ? `background: ${color}; border-color:${color}` : `background: transparent; border-color: #ddd`;
+
+                    html += `
+                        <div class="filter-item ${isActive}" onclick="toggleRoute('${key}', this)" data-route="${key}">
+                            <div class="filter-checkbox" style="${bgStyle}" data-color="${color}"></div>
+                            <div class="filter-label">${name}</div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            }
+
+            // [核心] 切换线路逻辑
+            function toggleRoute(routeKey, element) {
+                activeRoutes[routeKey] = !activeRoutes[routeKey];
+                
+                const checkbox = element.querySelector('.filter-checkbox');
+                const color = checkbox.dataset.color;
+                
+                if (activeRoutes[routeKey]) {
+                    element.classList.add('active');
+                    checkbox.style.background = color;
+                    checkbox.style.borderColor = color;
+                } else {
+                    element.classList.remove('active');
+                    checkbox.style.background = 'transparent';
+                    checkbox.style.borderColor = '#ddd';
+                }
+
+                // [修改] 更新背景图片 (使用新ID: bg-img-xxx)
+                const imgEl = document.getElementById(`bg-img-${routeKey}`);
+                if (imgEl) {
+                    if (activeRoutes[routeKey]) {
+                        imgEl.classList.add('active');
+                    } else {
+                        imgEl.classList.remove('active');
+                    }
+                }
+
+                updateBirdMigration(currentMonth);
+            }
+
             function getBirdSVG(type, color) {
-                // 丹顶鹤
                 const craneShape = `<path d="M20 5 L25 15 L38 12 L22 25 L20 38 L18 25 L2 12 L15 15 Z" fill="${color}" stroke="white" stroke-width="1.5" stroke-linejoin="round"/><path d="M20 5 L20 25" stroke="white" stroke-width="1" opacity="0.5"/>`;
-                // 小天鹅
                 const swanShape = `<path d="M20 2 L28 15 L38 8 L25 22 L20 35 L15 22 L2 8 L12 15 Z" fill="${color}" stroke="white" stroke-width="1.5" stroke-linejoin="round"/><path d="M20 2 L20 22" stroke="white" stroke-width="1" opacity="0.5"/>`;
-                // 斑头雁
                 const gooseShape = `<path d="M20 0 L26 18 L36 24 L20 28 L4 24 L14 18 Z" fill="${color}" stroke="white" stroke-width="1.5" stroke-linejoin="round"/><path d="M20 0 L20 28" stroke="white" stroke-width="1" opacity="0.5"/>`;
-
                 const shapes = { 'crane': craneShape, 'swan': swanShape, 'goose': gooseShape };
-
                 return `<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" style="overflow:visible;">
                             <filter id="ds-${type}"><feDropShadow dx="0" dy="3" stdDeviation="2" flood-color="rgba(0,0,0,0.3)"/></filter>
                             <g filter="url(#ds-${type})">${shapes[type] || shapes['crane']}</g>
@@ -309,21 +389,25 @@
                 container.innerHTML = html;
             }
 
-            // --- 5. [核心修正] 更新地图：鸟先飞，线后画 ---
             function updateBirdMigration(month) {
-                // 1. 清除上一次未完成的画线定时器，防止快速切换时线条错乱
                 routeDrawTimeouts.forEach(t => clearTimeout(t));
                 routeDrawTimeouts = [];
 
                 historyLayerGroup.clearLayers();
                 const monthNamesEn = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-                Object.values(birdData).forEach(bird => {
+                Object.entries(birdData).forEach(([key, bird]) => {
+                    
+                    if (!activeRoutes[key]) {
+                        if (birdMarkers[bird.id]) {
+                            map.removeLayer(birdMarkers[bird.id]);
+                            delete birdMarkers[bird.id];
+                        }
+                        return; 
+                    }
+
                     const turfPoints = bird.monthlyData.map(d => [d.pos[1], d.pos[0]]);
                     
-                    // --- Part A: 绘制 "上个月及其之前" 的历史轨迹 (Stable History) ---
-                    
-                    // [1. 历史点] 绘制 0 -> month-1 (不含当前月)
                     for (let i = 0; i < month - 1; i++) {
                         const historyPos = bird.monthlyData[i].pos;
                         const historyIcon = L.divIcon({
@@ -334,33 +418,25 @@
                         L.marker(historyPos, { icon: historyIcon, interactive: false, zIndexOffset: 500 }).addTo(historyLayerGroup);
                     }
 
-                    // [2. 历史线] 绘制 0 -> month-1 (修正处：只画到上个月)
-                    if (month > 2) { // 至少要有3个月的数据(0,1,2)才能画出 0->1 的历史线
-                        // 核心修正：slice(0, month - 1)
+                    if (month > 2) { 
                         let stablePathPoints = turfPoints.slice(0, month - 1); 
-                        
-                        // 简单去重
                         let cleanStablePath = stablePathPoints.filter((pt, i) => i===0 || !(pt[0]===stablePathPoints[i-1][0] && pt[1]===stablePathPoints[i-1][1]));
                         
                         if (cleanStablePath.length >= 2) {
                             const line = turf.lineString(cleanStablePath);
                             const curved = turf.bezierSpline(line, {resolution: 10000, sharpness: 0.5});
-                            // 立即添加到地图
                             L.geoJSON(curved, { 
                                 style: { color: bird.color, weight: 2, opacity: 0.6, dashArray: month>8?'5,5':null } 
                             }).addTo(historyLayerGroup);
                         }
                     }
 
-                    // --- Part B: 更新候鸟位置 (Bird Animation) ---
-                    
                     const monthData = bird.monthlyData[month - 1];
                     const currentPos = monthData.pos; 
                     const currentDesc = currentLang === 'zh' ? monthData.desc_zh : monthData.desc_en;
                     const birdName = currentLang === 'zh' ? bird.name_zh : bird.name_en;
                     const monthLabel = currentLang === 'zh' ? `${month}月` : monthNamesEn[month-1];
 
-                    // 计算朝向
                     let bearing = 0;
                     if (month > 1) {
                         const prevPos = bird.monthlyData[month-2].pos;
@@ -369,23 +445,17 @@
                         bearing = turf.bearing(start, end);
                     }
 
-                    // 处理 Marker
                     if (birdMarkers[bird.id]) {
                         const marker = birdMarkers[bird.id];
-                        // 触发 CSS transition (1.5s)
                         marker.setLatLng(currentPos);
-                        
                         const tooltipHtml = `<div style="border-bottom: 2px solid ${bird.color}; padding-bottom:5px; margin-bottom:5px; font-weight:bold; color:${bird.color}">
                             ${birdName} <span style="font-size:0.7em; color:#888; background:#eee; padding:2px 6px; border-radius:10px;">${monthLabel}</span>
                          </div>
                          <div style="font-size:0.85rem;">${currentDesc}</div>`;
                         marker.setTooltipContent(tooltipHtml);
-
                         const iconDiv = marker.getElement().querySelector('.geo-bird-icon');
                         if (iconDiv) iconDiv.style.transform = `rotate(${bearing}deg)`;
-
                     } else {
-                        // 首次创建
                         const svgHtml = getBirdSVG(bird.id, bird.color);
                         const birdIcon = L.divIcon({
                             className: 'bird-icon-wrapper', 
@@ -403,28 +473,20 @@
                         birdMarkers[bird.id] = newMarker;
                     }
 
-                    // --- Part C: 延迟绘制最新一段路线 (Delayed Line) ---
                     if (month > 1) {
-                        // 设置 1500ms 的延时，等鸟飞到了再画线
                         const timeoutId = setTimeout(() => {
-                            // 绘制整条线 (0 -> month)，覆盖之前的历史线，形成完整的路径
-                            // 或者你也可以只画 month-1 到 month 这一段，但 turf 计算贝塞尔曲线时，分段画可能会不平滑
-                            // 所以最佳策略是：动画结束后，用包含最新点的全路径覆盖一次
-                            
-                            let fullPathPoints = turfPoints.slice(0, month); // 这次是 slice(0, month)
+                            if (!activeRoutes[key]) return; 
+                            let fullPathPoints = turfPoints.slice(0, month); 
                             let cleanFullPath = fullPathPoints.filter((pt, i) => i===0 || !(pt[0]===fullPathPoints[i-1][0] && pt[1]===fullPathPoints[i-1][1]));
                             
                             if (cleanFullPath.length >= 2) {
                                 const line = turf.lineString(cleanFullPath);
                                 const curved = turf.bezierSpline(line, {resolution: 10000, sharpness: 0.5});
-                                
-                                // 这里可以加一个小 trick：先画一条透明度渐变的线，或者直接添加
                                 L.geoJSON(curved, { 
                                     style: { color: bird.color, weight: 2, opacity: 0.6, dashArray: month>8?'5,5':null } 
                                 }).addTo(historyLayerGroup);
                             }
-                        }, 1500); // 必须与 CSS transition 时间一致
-                        
+                        }, 1500); 
                         routeDrawTimeouts.push(timeoutId);
                     }
                 });
@@ -484,6 +546,7 @@
             // --- 初始化 ---
             updateTemperatureLayer(1);
             renderSidebar(); 
+            updateFilterUI(); 
 
         </script>
     </body>
