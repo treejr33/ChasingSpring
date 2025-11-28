@@ -114,7 +114,7 @@
                         <span class="lang-en">Annual Cycle Simulation</span>
                     </h2>
                     <p class="text-muted">
-                        <span class="lang-zh">点击播放，<strong style="color:#64a19d;">悬停几何图标</strong> 查看实时状态，<strong style="color:#64a19d;">点击右上角</strong> 筛选线路</span>
+                        <span class="lang-zh">点击播放，<strong style="color:#64a19d;">悬停几何图标</strong> 查看实时状态，<strong style="color:#64a19d;">点击右上角</strong> 筛选线路与热力图</span>
                         <span class="lang-en">Press Play to start. <strong style="color:#64a19d;">Hover</strong> over birds for status. Filter routes via <strong style="color:#64a19d;">Top-Right</strong> control.</span>
                     </p>
                 </div>
@@ -174,6 +174,7 @@
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
         <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
 
         <script>
@@ -187,11 +188,67 @@
             // 存储绘制路线的定时器，用于清除未完成的动画
             let routeDrawTimeouts = [];
 
-            // 线路状态管理
+            // --- 热力图数据与变量 ---
+            const heatMapPoints = [
+                [29.11, 116.63, 1.0], // 鄱阳湖 (关键越冬地)
+                [28.90, 112.90, 0.9], // 洞庭湖
+                [47.20, 124.25, 1.0], // 扎龙湿地 (丹顶鹤繁殖地)
+                [36.80, 100.20, 1.0], // 青海湖 (斑头雁繁殖地)
+                [37.75, 118.95, 0.8], // 黄河三角洲 (中转站)
+                [33.38, 120.13, 0.9], // 盐城珍禽保护区
+                [31.50, 121.90, 0.7], // 崇明东滩
+                [26.85, 104.28, 0.8], // 贵州草海 (黑颈鹤)
+                [41.12, 121.12, 0.6], // 辽河口
+                [53.00, 108.00, 0.6], // 贝加尔湖周边
+                [34.80, 113.50, 0.5], // 三门峡
+                [30.20, 117.40, 0.7], // 升金湖
+                [19.00, 109.50, 0.5], // 海南部分湿地
+                [24.00, 120.50, 0.4],  // 台湾曾文溪口 (黑面琵鹭)
+                [27.20, 88.00, 1.0],  // [新增] 斑头雁越冬地 (南亚低地/印度)
+                [29.65, 91.13, 0.8],  // [可选] 拉萨河谷/雅鲁藏布江 (关键停歇地)
+                [27.20, 88.00, 1.0], // 核心点
+                // =========================================
+                [45.00, 132.50, 0.5], // 兴凯湖 (重要但非核心)
+                [49.50, 136.00, 0.3], // 阿穆尔河下游
+                [43.10, 144.50, 0.4], // 日本北海道 (留鸟种群)
+                [32.10, 130.30, 0.4], // 日本出水市
+                [38.20, 127.20, 0.4], // 韩国铁原
+                [36.00, 126.70, 0.3], // 韩国锦江河口
+                [27.80, 99.60, 0.4],  // 香格里拉纳帕海
+                [24.90, 102.70, 0.3], // 昆明滇池
+                [30.70, 106.10, 0.2], // 四川南充 (微弱背景)
+                [35.50, 97.00, 0.3],  // 冬给措纳湖
+                [27.17, 77.52, 0.5],  // 印度凯奥拉德奥 (次级核心)
+                [19.80, 85.30, 0.4],  // 印度奇利卡湖
+                [24.50, 93.90, 0.2],  // 曼尼普尔
+                [22.00, 89.00, 0.3],  // 孙德尔本斯
+                [32.00, 76.00, 0.3],  // 庞大坝湖
+                [25.00, 67.00, 0.2],  // 印度河三角洲
+                [20.50, 96.90, 0.3],  // 缅甸茵莱湖
+                [12.50, 104.20, 0.4], // 柬埔寨洞里萨湖
+                [10.00, 106.00, 0.3], // 越南湄公河
+                [17.00, 100.00, 0.2],  // 泰国中部
+                [50.30, 92.70, 0.4],  // 蒙古乌布苏湖 (Uvs Nuur, 巨大的咸水湖盆地)
+                [51.10, 100.80, 0.4], // 蒙古库苏古尔湖 (Khovsgol, 这里的“小贝加尔”)
+                [47.80, 117.70, 0.3], // 蒙古贝尔湖 (Buir Lake, 鹤类关键停歇点)
+                [47.70, 102.70, 0.3], // 蒙古鄂吉湖 (Ogii Lake, 水鸟天堂)
+                [49.95, 115.70, 0.4], // 达乌尔自然保护区 (中蒙俄交界，生态极其丰富)
+                [73.00, 126.50, 0.5], // 俄罗斯勒拿河三角洲 (Lena Delta, 极北的核心繁殖地)
+                [71.40, 148.00, 0.4], // 因迪吉尔卡河湿地 (白鹤的故乡)
+                [64.50, 155.00, 0.3], // 科雷马低地 (Kolyma Lowland)
+                [62.00, 129.70, 0.3], // 雅库特中部湖泊群
+                [55.00, 83.00, 0.3]   // 新西伯利亚水库 (Ob Sea, 西西伯利亚中转站)
+            ];
+            let heatLayer = null;
+
+            
+
+            // 线路状态管理 (增加 heatmap)
             const activeRoutes = {
                 east: true,
                 mid: true,
-                west: true
+                west: true,
+                heatmap: false 
             };
 
             // --- 1. 语言切换 ---
@@ -286,7 +343,7 @@
                 attribution: '&copy; OpenStreetMap, &copy; CARTO'
             }).addTo(map);
 
-            // --- [新增] 台湾地区灰色遮罩 (开始) ---
+            // --- 台湾地区灰色遮罩 ---
             var taiwanGeoJson = {
                 "type": "Feature",
                 "properties": { "name": "Taiwan" },
@@ -299,24 +356,19 @@
             L.geoJSON(taiwanGeoJson, {
                 style: function (feature) {
                     return {
-                        fillColor: '#808080', // 灰色填充
-                        fillOpacity: 0.7,     // 填充不透明度
-                        color: '#666666',     // 边框颜色
-                        weight: 1,            // 边框宽度
-                        opacity: 1            // 边框不透明度
+                        fillColor: '#808080', 
+                        fillOpacity: 0.7,     
+                        color: '#666666',     
+                        weight: 1,            
+                        opacity: 1            
                     };
-                },
-                onEachFeature: function (feature, layer) {
-                    // 可选：添加鼠标悬停提示
-                    // layer.bindTooltip("台湾地区 / Taiwan Region", { sticky: true });
                 }
             }).addTo(map);
-            // --- [新增] 台湾地区灰色遮罩 (结束) ---
 
             var historyLayerGroup = L.layerGroup().addTo(map);
             let currentTemperatureLayer = null;
 
-            // --- [修改] 横向过滤器自定义控件 ---
+            // --- 横向过滤器自定义控件 ---
             var filterControl = L.control({position: 'topright'});
             
             filterControl.onAdd = function (map) {
@@ -328,15 +380,15 @@
             
             filterControl.addTo(map);
 
-            // 刷新过滤器UI的函数 (横向布局适配)
+            // [核心修改] 刷新过滤器UI的函数 (包含热力图)
             function updateFilterUI() {
                 const container = document.getElementById('map-filter-ui');
                 if (!container) return;
 
-                const title = currentLang === 'zh' ? '线路筛选' : 'Route Filter';
-                // 注意：这里的 CSS 已经设为 flex-row，所以 div 会自动横向排列
+                const title = currentLang === 'zh' ? '显示图层' : 'Map Layers';
                 let html = `<div class="filter-title">${title}</div>`;
 
+                // 1. 生成线路开关
                 Object.entries(birdData).forEach(([key, bird]) => {
                     const nameFull = currentLang === 'zh' ? bird.name_zh : bird.name_en;
                     const name = nameFull.split(/[:：]/)[0]; 
@@ -352,10 +404,127 @@
                         </div>
                     `;
                 });
+
+                // 2. 生成热力图开关
+                const hmActive = activeRoutes.heatmap ? 'active' : '';
+                // 按钮使用金色/橙色
+                const hmColor = '#FF8C00'; 
+                const hmBgStyle = activeRoutes.heatmap ? `background: ${hmColor}; border-color:${hmColor}` : `background: transparent; border-color: #ddd`;
+                const hmLabel = currentLang === 'zh' ? '栖息地热力' : 'Habitat Heat';
+
+                html += `
+                    <div class="filter-item ${hmActive}" onclick="toggleHeatmap(this)">
+                        <div class="filter-checkbox" style="${hmBgStyle}" data-color="${hmColor}"></div>
+                        <div class="filter-label" style="color:#d35400;">${hmLabel}</div>
+                    </div>
+                `;
+
                 container.innerHTML = html;
             }
 
-            // [核心] 切换线路逻辑
+            // 定义一个全局变量存储信标
+            let pulseMarkers = [];
+            const keyLocations = [
+                // --- 东线：丹顶鹤 ---
+                { pos: [33.38, 120.13], type: 'winter' },   // 越冬：盐城
+                { pos: [47.20, 124.25], type: 'breeding' }, // 繁殖：扎龙
+
+                // --- 中线：小天鹅 ---
+                { pos: [29.10, 116.68], type: 'winter' },   // 越冬：鄱阳湖
+                { pos: [53.00, 108.00], type: 'breeding' }, // 繁殖：西伯利亚
+
+                // --- 西线：斑头雁 ---
+                { pos: [27.20, 88.00],  type: 'winter' },   // 越冬：南亚
+                { pos: [36.80, 100.20], type: 'breeding' }  // 繁殖：青海湖
+            ];
+
+            // [核心] 切换热力图逻辑（包含地图变暗逻辑）
+            function toggleHeatmap(element) {
+                activeRoutes.heatmap = !activeRoutes.heatmap;
+                const checkbox = element.querySelector('.filter-checkbox');
+                const color = checkbox.dataset.color;
+                
+                // [核心优化] 切换地图容器的 class 来触发夜间模式滤镜
+                // 这比直接 setOpacity 性能更好，效果也更平滑
+                const mapContainer = document.getElementById('map');
+                
+                if (activeRoutes.heatmap) {
+                    element.classList.add('active');
+                    checkbox.style.background = color;
+                    checkbox.style.borderColor = color;
+                    
+                    // 开启夜间模式：压暗底图
+                    mapContainer.classList.add('night-mode');
+                    
+                    // 创建/显示热力图层
+                    if (!heatLayer) {
+                        heatLayer = L.heatLayer(heatMapPoints, {
+                            max: 0.3,
+                            radius: 40,       // [调大] 让光晕范围更广
+                            blur: 20,         // [调大] 让边缘更柔和，像雾气一样
+                            maxZoom: 9,       // 调整最大缩放级别，防止放大后光点散开
+                            minOpacity: 0.08, // [关键] 即使是低热度区域也有一点点可见度，增加背景噪音
+                            gradient: {
+                                // 0.0 - 0.3: 背景底色（深红/紫），极低透明度，模拟外围活动区
+                                0.1: 'rgba(139, 0, 0, 0.8)',  
+                                0.3: 'rgba(255, 69, 0, 0.8)',  
+                                // 0.6: 主体颜色（金橙色），高饱和度
+                                0.6: 'rgba(255, 165, 0, 0.95)', 
+                                // 0.9 - 1.0: 核心爆发（亮黄到纯白），模拟高密度聚集
+                                0.9: 'rgba(255, 255, 0, 1.0)', 
+                                1.0: '#FFFFFF' 
+                            }
+                        });
+                    }
+                    heatLayer.addTo(map);
+                    
+                    // [核心修改] 添加带类型的脉冲信标
+                    keyLocations.forEach(loc => {
+                        // 根据类型决定 CSS 类名
+                        const typeClass = loc.type === 'breeding' ? 'pulse-breeding' : 'pulse-winter';
+                        
+                        const pulseIcon = L.divIcon({
+                            className: '', // 清空 Leaflet 默认类，避免干扰
+                            // 在 HTML 中加入 typeClass
+                            html: `<div class="pulse-icon ${typeClass}">
+                                    <div class="pulse-ring"></div>
+                                    <div class="pulse-ring"></div>
+                                </div>`,
+                            iconSize: [40, 40],
+                            iconAnchor: [20, 20]
+                        });
+                        
+                        const marker = L.marker(loc.pos, { // 注意这里取 loc.pos
+                            icon: pulseIcon, 
+                            interactive: false, 
+                            zIndexOffset: -100 
+                        }).addTo(map);
+                        
+                        pulseMarkers.push(marker);
+                    });
+
+                } else {
+                    element.classList.remove('active');
+                    checkbox.style.background = 'transparent';
+                    checkbox.style.borderColor = '#ddd';
+                    
+                    // 关闭夜间模式：恢复底图亮度
+                    mapContainer.classList.remove('night-mode');
+                    
+                    // 移除图层
+                    if (heatLayer) {
+                        map.removeLayer(heatLayer);
+                    }
+                    // [新增] 移除脉冲信标
+                    pulseMarkers.forEach(m => map.removeLayer(m));
+                    pulseMarkers = [];
+                }
+                
+                // 强制重绘气温层以适应新的亮度（如果需要）
+                // updateTemperatureLayer(currentMonth); 
+            }
+
+            // 切换线路逻辑
             function toggleRoute(routeKey, element) {
                 activeRoutes[routeKey] = !activeRoutes[routeKey];
                 
@@ -372,7 +541,7 @@
                     checkbox.style.borderColor = '#ddd';
                 }
 
-                // [修改] 更新背景图片 (使用新ID: bg-img-xxx)
+                // 更新背景图片
                 const imgEl = document.getElementById(`bg-img-${routeKey}`);
                 if (imgEl) {
                     if (activeRoutes[routeKey]) {
