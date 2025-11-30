@@ -1,419 +1,1064 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spring Chasers Presentation</title>
-    <!-- 使用国内稳定 CDN -->
-    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    
-    <style>
-        /* =========================================
-           1. 核心配色 (与网站一致)
-           ========================================= */
-        :root {
-            --primary: #64a19d;      /* 青绿色 */
-            --secondary: #2c3e50;    /* 深蓝色 */
-            --accent: #a71d2a;       /* 红色 - 警告 */
-            --bg-color: #f8f9fa;     /* 浅灰背景 */
-            --glass-bg: rgba(255, 255, 255, 0.95);
-            --text-main: #333;
-        }
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+        <meta name="description" content="Spring Chasers - Bird Migration Visualization" />
+        <title>候鸟逐春：数据分析与生存挑战</title>
+        
+        <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
+        
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;700&family=Noto+Serif+SC:wght@300;700&display=swap" rel="stylesheet">
+        
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        
+        <link href="css/styles.css" rel="stylesheet" />
+        <link href="css/custom.css" rel="stylesheet" />
 
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #000;
-            height: 100vh;
-            width: 100vw;
-            overflow: hidden; /* 禁止滚动 */
-            font-family: "Helvetica Neue", Helvetica, "Microsoft YaHei", Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
+        <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 
-        /* =========================================
-           2. 容器逻辑：强制缩放适配
-           ========================================= */
-        #slide-container {
-            width: 1920px;
-            height: 1080px;
-            background-color: var(--bg-color);
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 0 50px rgba(0,0,0,0.5);
-            /* 居中定位，JS 会控制 scale */
-            transform-origin: center center;
-        }
+        <style>
+            /* =========================================
+               [核心修复] 双语切换逻辑
+               使用 !important 确保权重最高，解决切换无效问题
+               ========================================= */
+            /* 默认状态（中文模式）：隐藏英文 */
+            body:not(.en-mode) .lang-en { display: none !important; }
+            body:not(.en-mode) .lang-zh { display: inline-block !important; }
 
-        /* 背景装饰 */
-        .bg-gradient {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle at 90% 10%, rgba(100, 161, 157, 0.1) 0%, transparent 40%),
-                        radial-gradient(circle at 10% 90%, rgba(44, 62, 80, 0.05) 0%, transparent 40%);
-            z-index: 0;
-        }
+            /* 英文模式：隐藏中文，显示英文 */
+            body.en-mode .lang-zh { display: none !important; }
+            body.en-mode .lang-en { display: inline-block !important; }
 
-        /* =========================================
-           3. 幻灯片内容样式
-           ========================================= */
-        .slide {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            padding: 80px 120px; /* 调整内边距，防止贴边 */
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.4s ease;
-            z-index: 1;
-        }
-
-        .slide.active {
-            opacity: 1;
-            visibility: visible;
-            z-index: 10;
-        }
-
-        h1 {
-            font-family: "Georgia", serif;
-            font-size: 6.5rem;
-            color: var(--secondary);
-            margin: 0;
-            line-height: 1.2;
-        }
-
-        h2 {
-            font-family: "Georgia", serif;
-            font-size: 3.8rem;
-            color: var(--secondary);
-            margin-bottom: 50px;
-            border-left: 12px solid var(--primary);
-            padding-left: 30px;
-        }
-
-        h3 {
-            font-size: 2rem;
-            color: var(--primary);
-            margin-bottom: 20px;
-            font-weight: 700;
-        }
-
-        p, li {
-            font-size: 1.6rem;
-            color: #444;
-            line-height: 1.6;
-            margin-bottom: 25px;
-        }
-
-        ul { list-style: none; padding: 0; }
-        li { position: relative; padding-left: 1.5em; }
-        li::before {
-            content: "\f054"; /* FontAwesome arrow */
-            font-family: "Font Awesome 6 Free";
-            font-weight: 900;
-            color: var(--primary);
-            position: absolute;
-            left: 0; top: 0.1em;
-        }
-
-        .glass-card {
-            background: var(--glass-bg);
-            border: 1px solid rgba(255,255,255,0.8);
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-        }
-
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; height: 100%; align-items: center; }
-        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 50px; margin-top: 50px; }
-
-        .footer {
-            position: absolute; bottom: 40px; left: 120px; right: 120px;
-            display: flex; justify-content: space-between;
-            font-size: 1.2rem; color: #aaa; border-top: 2px solid #eee; padding-top: 20px;
-        }
-
-        .highlight { color: var(--primary); font-weight: 700; }
-        .accent { color: var(--accent); font-weight: 700; }
-
-        /* 图标盒子 */
-        .icon-box {
-            text-align: center; background: white; padding: 50px 30px;
-            border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-        }
-        .icon-box i { font-size: 5rem; margin-bottom: 30px; display: block; }
-
-        /* 流程箭头 */
-        .arrow-next { display: flex; align-items: center; justify-content: center; font-size: 4rem; color: #ddd; }
-
-    </style>
-</head>
-<body>
-
-    <div id="slide-container">
-        <div class="bg-gradient"></div>
-
-        <!-- ================= PAGE 1: 封面 ================= -->
-        <div class="slide active" style="justify-content: center; text-align: center;">
-            <div style="margin-bottom: 60px;">
-                <i class="fas fa-dove" style="font-size: 9rem; color: var(--primary); margin-bottom: 40px;"></i>
-                <h1>Spring Chasers</h1>
-                <div style="font-size: 2.8rem; color: #666; margin-top: 20px; font-weight: 300;">
-                    Tracking the Warmth: A Migration Visualization
-                </div>
-                <div style="font-size: 1.5rem; color: #999; margin-top: 20px; font-family: monospace;">
-                    treejr33.github.io/ChasingSpring
-                </div>
-            </div>
+            /* --- 基础样式 --- */
+            body { font-family: 'Montserrat', sans-serif; overflow-x: hidden; background-color: #000; }
+            .legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; flex-shrink: 0; }
+            .legend-line { display: inline-block; width: 15px; height: 2px; margin-right: 6px; vertical-align: middle; flex-shrink: 0; }
             
-            <div style="display: flex; justify-content: center; gap: 100px; margin-top: 80px;">
-                <div class="glass-card" style="min-width: 400px;">
-                    <strong style="color: var(--secondary); font-size: 2.2rem;">Ren Jianpeng</strong><br>
-                    <span style="color: var(--primary); font-size: 1.5rem; font-weight: 600;">Technical Lead</span>
-                </div>
-                <div class="glass-card" style="min-width: 400px;">
-                    <strong style="color: var(--secondary); font-size: 2.2rem;">Zhang Kaixiang</strong><br>
-                    <span style="color: var(--primary); font-size: 1.5rem; font-weight: 600;">Narrative Lead</span>
-                </div>
-            </div>
-            <div class="footer"><span>Introduction</span><span>1 / 8</span></div>
+            /* 自适应导航栏样式 */
+            #mainNav { transition: background-color 0.3s ease, padding 0.3s ease; }
+            #mainNav.navbar-scrolled {
+                background-color: #000 !important;
+                padding-top: 10px; padding-bottom: 10px;
+                box-shadow: 0 2px 10px rgba(255,255,255,0.1);
+            }
+
+            /* 研究方法悬浮窗 */
+            .methodology-float {
+                position: absolute; top: 120px; right: 10%; z-index: 50;
+                width: 50px; height: 50px; overflow: hidden;
+                background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 25px;
+                transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+                color: white; cursor: pointer;
+            }
+            .methodology-float:hover, .methodology-float.active {
+                width: 300px; height: auto; border-radius: 15px; background: rgba(0, 0, 0, 0.8);
+            }
+            .method-icon {
+                position: absolute; top: 0; right: 0; width: 50px; height: 50px;
+                display: flex; justify-content: center; align-items: center; font-size: 1.2rem;
+            }
+            .method-content {
+                padding: 20px; padding-right: 50px; opacity: 0; transition: opacity 0.3s 0.1s;
+                font-size: 0.85rem; line-height: 1.6; text-align: left;
+            }
+            .methodology-float.active .method-content, .methodology-float:hover .method-content { opacity: 1; }
+
+            /* 地图板块背景色：低饱和度浅灰黄 */
+            .projects-section {
+                background-color: #f2f0eb; 
+                padding: 6rem 0;
+                position: relative;
+            }
+            .projects-section h2 { color: #2c3e50 !important; } 
+            .projects-section .text-muted { color: #666 !important; }
+
+            /* 故事分析板块样式 (含背景图) */
+            .story-section {
+                padding: 7rem 0;
+                position: relative;
+                color: white;
+                background: linear-gradient(rgba(59, 48, 10, 0.85), rgba(20, 24, 31, 0.95)), url('assets/bg-video.mp4');
+                background-size: cover;
+                background-position: center;
+                background-attachment: fixed;
+            }
+            
+            .story-card {
+                background: rgba(255, 255, 255, 0.07); 
+                backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+                padding: 35px 25px; 
+                border-radius: 8px;
+                margin-bottom: 30px; 
+                border-top: 3px solid transparent; 
+                transition: transform 0.4s, background 0.4s;
+                height: 100%; 
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            .story-card:hover { transform: translateY(-8px); background: rgba(255, 255, 255, 0.12); }
+            .story-card h4 { 
+                font-family: 'Noto Serif SC', serif; 
+                font-size: 1.3rem; 
+                margin-bottom: 20px; 
+                letter-spacing: 1px;
+            }
+            .story-card p { 
+                font-size: 0.95rem; 
+                color: rgba(255,255,255,0.85); 
+                line-height: 1.8; 
+                font-weight: 400;
+                text-align: justify;
+            }
+
+            /* [新增] 总结段落样式 */
+            .story-summary {
+                margin-top: 40px;
+                padding: 30px;
+                border-top: 1px solid rgba(255,255,255,0.2);
+                text-align: center;
+                max-width: 900px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            .story-summary h3 {
+                font-family: 'Noto Serif SC', serif;
+                font-size: 1.5rem;
+                margin-bottom: 15px;
+                color: #e0e0e0;
+            }
+            .story-summary p {
+                font-size: 1.1rem;
+                line-height: 1.8;
+                color: #b0b0b0;
+                font-weight: 300;
+                font-style: italic;
+            }
+            
+            /* 脉冲信标样式 */
+            .pulse-icon { position: relative; width: 100%; height: 100%; }
+            .pulse-icon::after { content: ''; position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; border-radius: 50%; transform: translate(-50%, -50%); z-index: 2; }
+            .pulse-ring { position: absolute; top: 50%; left: 50%; width: 30px; height: 30px; border: 2px solid; border-radius: 50%; transform: translate(-50%, -50%); opacity: 0; animation: pulse-wave 2.5s infinite linear; }
+            .pulse-ring:nth-child(2) { animation-delay: 1.25s; }
+            @keyframes pulse-wave { 0% { width: 4px; height: 4px; opacity: 1; border-width: 3px; } 100% { width: 60px; height: 60px; opacity: 0; border-width: 0px; } }
+            .pulse-winter::after { background: #e0ffff; box-shadow: 0 0 10px #00ffff; }
+            .pulse-winter .pulse-ring { border-color: #00ffff; box-shadow: 0 0 5px rgba(0, 0, 255, 0.5); }
+            .pulse-breeding::after { background: #fffacd; box-shadow: 0 0 10px #ff8c00; }
+            .pulse-breeding .pulse-ring { border-color: #ffd700; box-shadow: 0 0 5px rgba(255, 50, 0, 0.5); }
+
+            /* 左侧分析面板 */
+            .chart-trigger-btn {
+                position: absolute; top: 160px; left: 20px; width: 40px; height: 40px;
+                background: #2c3e50; color: white; border-radius: 50%;
+                display: flex; justify-content: center; align-items: center; cursor: pointer;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.2); z-index: 2000; transition: all 0.3s ease;
+            }
+            .chart-trigger-btn:hover { background: #64a19d; transform: scale(1.1); }
+            .chart-trigger-btn.active { background: #64a19d; box-shadow: 0 0 0 4px rgba(100, 161, 157, 0.3); }
+
+            .sidebar-wrapper { top: 100px; left: 20px; }
+
+            .chart-overlay-panel {
+                position: absolute; top: 100px; left: 70px; width: 480px; height: auto;
+                background: rgba(255, 255, 255, 0.25); 
+                backdrop-filter: blur(25px) saturate(180%); -webkit-backdrop-filter: blur(25px) saturate(180%);
+                border-radius: 16px; padding: 20px; border: 1px solid rgba(255, 255, 255, 0.4);
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); z-index: 1500; 
+                display: flex; flex-direction: column; opacity: 0; visibility: hidden;
+                transform: translateX(-20px); transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); pointer-events: none;
+            }
+            .chart-overlay-panel.show { opacity: 1; visibility: visible; transform: translateX(0); pointer-events: auto; }
+
+            .chart-tabs { display: flex; margin-bottom: 15px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 10px; }
+            .chart-tab-item {
+                margin-right: 15px; font-family: 'Noto Serif SC', serif; font-size: 0.85rem;
+                font-weight: 600; color: #555; cursor: pointer; position: relative;
+                transition: color 0.3s; opacity: 0.6; white-space: nowrap;
+            }
+            .chart-tab-item:hover { opacity: 1; }
+            .chart-tab-item.active { color: #2c3e50; opacity: 1; }
+            .chart-tab-item.active::after {
+                content: ''; position: absolute; bottom: -11px; left: 0;
+                width: 100%; height: 3px; background: #64a19d; border-radius: 3px 3px 0 0;
+            }
+            .chart-container { display: none; width: 100%; height: 220px; }
+            .chart-container.active { display: block; animation: fadeIn 0.5s; }
+
+            /* 右侧生存挑战 */
+            .mode-switch-container {
+                position: absolute; top: 80px; right: 10px; z-index: 1500;
+                background: white; padding: 8px 15px; border-radius: 50px;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.1); display: flex; align-items: center;
+                font-weight: 700; font-size: 0.85rem; color: #2c3e50;
+            }
+            .form-check-input:checked { background-color: #a71d2a; border-color: #a71d2a; }
+
+            .energy-panel {
+                position: absolute; top: 130px; right: 10px; width: 320px;
+                background: rgba(30, 30, 30, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+                border-radius: 12px; padding: 15px; color: white;
+                border: 1px solid rgba(255, 255, 255, 0.2); z-index: 1500;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3); transition: all 0.3s ease; display: none;
+            }
+            .energy-header {
+                display: flex; justify-content: space-between; align-items: center;
+                margin-bottom: 12px; font-family: 'Noto Serif SC', serif; font-weight: 700;
+                border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 8px; font-size: 0.9rem;
+            }
+            .energy-item { margin-bottom: 12px; display: flex; align-items: center; font-size: 0.8rem; }
+            .energy-label { width: 70px; font-weight: 600; }
+            .progress-container { flex-grow: 1; height: 8px; background: #444; border-radius: 4px; margin: 0 10px; position: relative; overflow: hidden; }
+            .progress-bar-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #ff4e50, #f9d423); border-radius: 4px; transition: width 0.5s ease, background 0.3s; }
+            .energy-value { width: 35px; text-align: right; font-family: 'Montserrat', monospace; }
+            .bird-dead .progress-bar-fill { background: #555 !important; width: 0 !important; }
+            .bird-dead .energy-label { color: #888; text-decoration: line-through; }
+            .stopover-icon {
+                display: flex; justify-content: center; align-items: center; font-size: 1.2rem;
+                color: #20c997; background: white; border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.2);
+                border: 2px solid #20c997; transition: all 0.3s; animation: pulse-green 2s infinite;
+            }
+            .stopover-icon.destroyed { color: #a71d2a; border-color: #a71d2a; background: #eee; animation: none; }
+            @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(32, 201, 151, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(32, 201, 151, 0); } 100% { box-shadow: 0 0 0 0 rgba(32, 201, 151, 0); } }
+            .destroy-btn { background: #a71d2a; color: white; border: none; padding: 4px 8px; border-radius: 4px; margin-top: 5px; cursor: pointer; font-size: 0.8rem; }
+            .restore-btn { background: #20c997; color: white; border: none; padding: 4px 8px; border-radius: 4px; margin-top: 5px; cursor: pointer; font-size: 0.8rem; }
+            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+            @media (max-width: 768px) {
+                .chart-trigger-btn { top: auto; bottom: 140px; }
+                .chart-overlay-panel { left: 50%; top: auto; bottom: 200px; transform: translateX(-50%) translateY(20px); width: 94%; }
+                .chart-overlay-panel.show { transform: translateX(-50%) translateY(0); }
+                .energy-panel { width: 180px; top: 120px; right: 10px; padding: 10px; }
+                .energy-label { display: none; }
+            }
+        </style>
+    </head>
+    <body id="page-top">
+        
+        <button class="lang-switch-btn" onclick="toggleLanguage()">
+            <i class="fas fa-globe"></i> <span id="lang-btn-text">EN</span>
+        </button>
+
+        <div class="video-background-holder">
+            <div class="video-overlay"></div>
+            <video autoplay muted loop playsinline id="bg-video">
+                <source src="assets/bg-video.mp4" type="video/mp4">
+            </video>
         </div>
 
-        <!-- ================= PAGE 2: 背景 (基于网站 About) ================= -->
-        <div class="slide">
-            <h2>Context: The Rhythm of Life</h2>
-            <div class="grid-2">
-                <div>
-                    <ul>
-                        <li><strong>Chasing Isotherms:</strong> Migratory birds don't just fly north; they follow the <span class="highlight">5°C - 10°C isotherm</span> (the "Green Wave") for optimal resources.</li>
-                        <li><strong>Energy Balance:</strong> Migration is a precise calculation of energy. Birds must refuel at specific <span class="highlight">Wetland Stopovers</span>.</li>
-                        <li><strong>The Problem:</strong> What happens if these stopovers are destroyed? Habitat loss creates an "Energy Crisis" that breaks the migration chain.</li>
+        <nav class="navbar navbar-expand-lg navbar-light fixed-top" id="mainNav">
+            <div class="container px-4 px-lg-5 p-0">
+                <a class="navbar-brand text-white" href="#page-top">
+                    <span class="lang-zh">候鸟逐春</span><span class="lang-en">SPRING CHASERS</span>
+                </a>
+                <button class="navbar-toggler navbar-toggler-right bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#navbarResponsive">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarResponsive">
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item"><a class="nav-link text-white-50 fw-bold" href="#about">
+                            <span class="lang-zh">迁徙奥秘</span><span class="lang-en">The Journey</span>
+                        </a></li>
+                        <li class="nav-item"><a class="nav-link text-white-50 fw-bold" href="#map-section">
+                            <span class="lang-zh">迁徙地图</span><span class="lang-en">Map</span>
+                        </a></li>
+                        <li class="nav-item"><a class="nav-link text-white-50 fw-bold" href="#story-analysis">
+                            <span class="lang-zh">简要分析</span><span class="lang-en">Analysis</span>
+                        </a></li>
+                        <li class="nav-item"><a class="nav-link text-white-50 fw-bold" href="#contact">
+                            <span class="lang-zh">加入我们</span><span class="lang-en">Join</span>
+                        </a></li>
                     </ul>
                 </div>
-                <div class="glass-card" style="text-align: center; height: 600px; display: flex; flex-direction: column; justify-content: center;">
-                    <h3 style="font-size: 2.5rem; color: var(--secondary); margin-bottom: 40px;">"The Energy Gamble"</h3>
-                    <div style="display: flex; justify-content: center; align-items: center; gap: 40px;">
-                        <div style="text-align: center;">
-                            <i class="fas fa-battery-full" style="font-size: 6rem; color: var(--primary);"></i>
-                            <p>Refuel</p>
-                        </div>
-                        <div style="font-size: 4rem; color: #ccc;">vs</div>
-                        <div style="text-align: center;">
-                            <i class="fas fa-battery-empty" style="font-size: 6rem; color: var(--accent);"></i>
-                            <p>Deplete</p>
-                        </div>
+            </div>
+        </nav>
+        
+        <header class="masthead">
+            <div class="hero-box">
+                <h1 class="hero-title">
+                    <span class="lang-zh">候鸟逐春</span>
+                    <span class="lang-en">SPRING CHASERS</span>
+                </h1>
+                <div class="hero-subtitle">
+                    <span class="lang-zh">中国候鸟迁徙与气温变化可视化</span>
+                    <span class="lang-en">Tracking the Warmth: A Migration Visualization</span>
+                </div>
+                <div>
+                    <a class="btn btn-hero" href="#map-section">
+                        <span class="lang-zh">开启旅程</span><span class="lang-en">Explore Map</span>
+                    </a>
+                </div>
+            </div>
+            <div class="tm-next" style="position:absolute; bottom:40px;">
+                <a href="#about"><i class="fas fa-caret-down tm-down-arrow"></i></a>
+            </div> 
+        </header>
+
+        <section class="about-section text-center" id="about" style="position:relative;">
+            
+            <div class="methodology-float" onclick="this.classList.toggle('active')">
+                <div class="method-icon"><i class="fas fa-microscope"></i></div>
+                <div class="method-content">
+                    <strong class="brand-font" style="font-size:1.1rem; display:block; margin-bottom:10px;">
+                        <span class="lang-zh">研究方法</span><span class="lang-en">Methodology</span>
+                    </strong>
+                    <span class="lang-zh">
+                        本项目基于 2024 年卫星追踪数据 (GPS/GSM) 重构迁徙路径。气温数据来源于 NASA MERRA-2 再分析资料。我们采用了空间插值法将离散的鸟类坐标与连续的等温线进行时空匹配，以验证“5-10°C 迁徙窗口”假说。
+                    </span>
+                    <span class="lang-en">
+                        Migration paths are reconstructed using 2024 GPS/GSM tracking data. Temperature data is derived from NASA MERRA-2. We used spatial interpolation to align discrete bird coordinates with continuous isotherms to validate the "5-10°C migration window" hypothesis.
+                    </span>
+                </div>
+            </div>
+
+            <div class="container px-4 px-lg-5">
+                <div class="row gx-4 gx-lg-5 justify-content-center">
+                    <div class="col-lg-8">
+                        <h2 class="text-white mb-4 brand-font">
+                            <span class="lang-zh">逐温而行：生命的节律</span>
+                            <span class="lang-en">Chasing Isotherms: The Rhythm of Life</span>
+                        </h2>
+                        <p class="text-white-50 fs-5">
+                            <span class="lang-zh">候鸟的迁徙是一场对能量与时机的精准计算。为了生存，它们不仅要追随 <strong>5°C - 10°C</strong> 的舒适温区，还要避开拥挤的旧路线，寻找新的食物补给点。</span>
+                            <span class="lang-en">Migration is a delicate balance of energy and timing. Driven by survival, these travelers don't just fly north—they follow the <strong>5°C - 10°C</strong> isotherm.</span>
+                        </p>
                     </div>
-                    <p style="font-size: 1.5rem; margin-top: 30px;">
-                        Without stopovers, energy reaches 0 before the destination.
+                </div>
+            </div>
+        </section>
+        
+        <section class="projects-section" id="map-section">
+            <div class="section-bg-layer">
+                <div id="bg-img-east" class="bg-bird-img active" style="background-image: url('assets/img/crane.png');"></div>
+                <div id="bg-img-mid" class="bg-bird-img active" style="background-image: url('assets/img/swan.png');"></div>
+                <div id="bg-img-west" class="bg-bird-img active" style="background-image: url('assets/img/goose.png');"></div>
+            </div>
+
+            <div class="container px-4 px-lg-5" style="position: relative; z-index: 5;">
+                <div class="text-center mb-5">
+                    <h2 class="text-black brand-font">
+                        <span class="lang-zh">候鸟迁徙全周期模拟</span>
+                        <span class="lang-en">Annual Cycle Simulation</span>
+                    </h2>
+                    <p class="text-muted">
+                        <span class="lang-zh">左侧查看<strong>数据分析</strong>，右侧开启<strong>生存挑战</strong>。点击右上角开启<strong>热力图</strong>。</span>
+                        <span class="lang-en">Use <strong>Analytics</strong> on left, <strong>Survival Mode</strong> on right. Toggle <strong>Heatmap</strong> at top-right.</span>
                     </p>
                 </div>
-            </div>
-            <div class="footer"><span>Research Background</span><span>2 / 8</span></div>
-        </div>
 
-        <!-- ================= PAGE 3: 研究问题与目标 ================= -->
-        <div class="slide">
-            <h2>Research Question & Objectives</h2>
-            
-            <div class="glass-card" style="background: var(--secondary); margin-bottom: 80px; border: none; padding: 60px;">
-                <p style="font-size: 2.8rem; color: white; text-align: center; margin: 0; font-family: serif; font-style: italic; line-height: 1.4;">
-                    "How does habitat availability and energy consumption determine the survival of migratory birds?"
-                </p>
-            </div>
+                <div class="row gx-0 mb-5">
+                    <div class="col-xl-9 col-lg-9 p-0 position-relative">
+                        <div id="map"></div>
 
-            <div class="grid-3">
-                <div class="icon-box">
-                    <i class="fas fa-map-location-dot" style="color: var(--primary);"></i>
-                    <h3>1. Visualize</h3>
-                    <p>Map 3 major flyways (East, Mid, West) with real-time tracking logic tracking the 5°C line.</p>
-                </div>
-                <div class="icon-box">
-                    <i class="fas fa-chart-line" style="color: #f39c12;"></i>
-                    <h3>2. Analyze</h3>
-                    <p>Provide a "Data Cockpit" to compare flight distance, elevation profile, and latitude.</p>
-                </div>
-                <div class="icon-box">
-                    <i class="fas fa-heart-pulse" style="color: var(--accent);"></i>
-                    <h3>3. Gamify</h3>
-                    <p>Implement a "Survival Mode" where users can simulate wetland destruction.</p>
+                        <div class="sidebar-wrapper">
+                            <div class="sidebar-trigger-btn" title="Information"><i class="fas fa-info"></i></div>
+                            <div class="sidebar-panel">
+                                <div class="sidebar-content-inner" id="sidebar-content"></div>
+                            </div>
+                        </div>
+
+                        <div id="chart-trigger" class="chart-trigger-btn" onclick="toggleChartDashboard()" title="Analytics">
+                            <i class="fas fa-chart-pie"></i>
+                        </div>
+
+                        <div id="chart-dashboard" class="chart-overlay-panel">
+                            <div class="chart-tabs">
+                                <div class="chart-tab-item active" onclick="switchChartTab('distance', this)">
+                                    <i class="fas fa-route"></i> <span class="lang-zh">里程竞赛</span><span class="lang-en">Distance</span>
+                                </div>
+                                <div class="chart-tab-item" onclick="switchChartTab('elevation', this)">
+                                    <i class="fas fa-mountain"></i> <span class="lang-zh">垂直挑战</span><span class="lang-en">Elevation</span>
+                                </div>
+                                <div class="chart-tab-item" onclick="switchChartTab('latitude', this)">
+                                    <i class="fas fa-temperature-high"></i> <span class="lang-zh">逐温而行</span><span class="lang-en">Isotherms</span>
+                                </div>
+                                <div style="margin-left: auto; cursor: pointer; opacity: 0.5;" onclick="toggleChartDashboard()">
+                                    <i class="fas fa-times"></i>
+                                </div>
+                            </div>
+                            <div id="chart-distance" class="chart-container active"></div>
+                            <div id="chart-elevation" class="chart-container"></div>
+                            <div id="chart-latitude" class="chart-container"></div>
+                        </div>
+
+                        <div class="mode-switch-container">
+                            <div class="form-check form-switch" style="margin-bottom:0;">
+                                <input class="form-check-input" type="checkbox" id="survivalModeToggle" onchange="toggleSurvivalMode()">
+                                <label class="form-check-label" for="survivalModeToggle">
+                                    <span class="lang-zh">⚠️ 生存挑战模式</span><span class="lang-en">⚠️ Survival Mode</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div id="energy-dashboard" class="energy-panel">
+                            <div class="energy-header">
+                                <span class="lang-zh">脂肪能量监测</span><span class="lang-en">Fat/Energy Monitor</span>
+                                <i class="fas fa-heart-pulse" style="color:#ff4e50;"></i>
+                            </div>
+                            <div class="energy-item" id="energy-row-east">
+                                <div class="energy-label"><span class="lang-zh">丹顶鹤</span><span class="lang-en">Crane</span></div>
+                                <div class="progress-container"><div class="progress-bar-fill" style="width: 100%;"></div></div>
+                                <div class="energy-value">100%</div>
+                            </div>
+                            <div class="energy-item" id="energy-row-mid">
+                                <div class="energy-label"><span class="lang-zh">小天鹅</span><span class="lang-en">Swan</span></div>
+                                <div class="progress-container"><div class="progress-bar-fill" style="width: 100%;"></div></div>
+                                <div class="energy-value">100%</div>
+                            </div>
+                            <div class="energy-item" id="energy-row-west">
+                                <div class="energy-label"><span class="lang-zh">斑头雁</span><span class="lang-en">Goose</span></div>
+                                <div class="progress-container"><div class="progress-bar-fill" style="width: 100%;"></div></div>
+                                <div class="energy-value">100%</div>
+                            </div>
+                            <div style="font-size:0.75rem; color:#aaa; margin-top:10px; line-height:1.2;">
+                                <span class="lang-zh">* 点击地图上的 <i class="fas fa-tint" style="color:#20c997"></i> 模拟湿地破坏。破坏后候鸟无法补给能量将死亡。</span>
+                                <span class="lang-en">* Click <i class="fas fa-tint" style="color:#20c997"></i> to simulate destruction. Birds will die without energy refuel.</span>
+                            </div>
+                        </div>
+
+                        <button id="play-btn" class="play-control-btn" onclick="togglePlay()"><i class="fas fa-play"></i></button>
+
+                        <div style="position: absolute; bottom: 30px; right: 30px; z-index: 1000; background: rgba(255,255,255,0.9); padding: 15px; border-radius: 10px; display:flex; align-items:center;">
+                            <div style="width:10px; height:80px; background:linear-gradient(to top, #0000FF, #FFFF00, #FF0000); margin-right:10px;"></div>
+                            <div style="height:80px; display:flex; flex-direction:column; justify-content:space-between; font-size:0.7rem; font-weight:bold;">
+                                <span>35°C</span><span>5°C</span><span>-25°C</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-xl-3 col-lg-3 d-none d-lg-block"></div>
+                    
+                    <div class="col-12">
+                        <div class="slider-container-bottom">
+                            <span id="current-month-label" style="font-size: 1.5rem; font-weight: 800; color: #2c3e50; width: 100px; text-align: center;">1月</span>
+                            <input type="range" id="month-slider" min="1" max="12" value="1" step="1" style="flex-grow: 1;">
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="footer"><span>Objectives</span><span>3 / 8</span></div>
-        </div>
+        </section>
 
-        <!-- ================= PAGE 4: 数据来源与技术 (自圆其说) ================= -->
-        <div class="slide">
-            <h2>Data & Methodology</h2>
-            
-            <div style="display: flex; justify-content: space-between; align-items: stretch; gap: 40px; margin-top: 60px; height: 500px;">
-                <!-- Data Source -->
-                <div class="glass-card" style="flex: 1; text-align: center;">
-                    <h3 style="color: var(--secondary); margin-bottom: 40px;">DATA SOURCES</h3>
-                    <div style="text-align: left;">
-                        <p><i class="fas fa-database"></i> <strong>Biological Data:</strong> Simulated monthly coordinates based on scientific tracking records of <em>Red-crowned Cranes</em> and <em>Bar-headed Geese</em>.</p>
-                        <p><i class="fas fa-cloud"></i> <strong>Climate Data:</strong> Historical monthly average temperature tiles (TileLayer).</p>
+        <section class="story-section" id="story-analysis">
+            <div class="container px-4 px-lg-5">
+                <div class="text-center mb-5">
+                    <h2 class="text-white brand-font">
+                        <span class="lang-zh">迁徙之道：自然的算法</span>
+                        <span class="lang-en">The Way of Migration: Nature's Algorithms</span>
+                    </h2>
+                    <p class="text-white-50">
+                        <span class="lang-zh">为了生存与繁衍，三种候鸟演化出了截然不同的最优解策略。</span>
+                        <span class="lang-en">For survival and reproduction, three species evolved distinct optimal strategies.</span>
+                    </p>
+                </div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="story-card" style="border-top-color: #FF7F50;">
+                            <h4 style="color:#FF7F50">
+                                <span class="lang-zh">东线：适应性共存</span>
+                                <span class="lang-en">Adaptive Coexistence</span>
+                            </h4>
+                            <p>
+                                <span class="lang-zh">丹顶鹤面临的是最复杂的计算环境。在高度城市化的东部沿海，它们的生存算法是“精准定位破碎生境”。它们放弃广阔栖息地，转而在盐城和黄河口等关键湿地节点中，寻找与人类活动共存的最优路径。</span>
+                                <span class="lang-en">Red-crowned Cranes face the most complex environment. In the highly urbanized east, their survival algorithm is "precision targeting of fragmented habitats." They find optimal paths for coexistence within critical wetland nodes like Yancheng.</span>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="story-card" style="border-top-color: #20c997;">
+                            <h4 style="color:#20c997">
+                                <span class="lang-zh">中线：能量效率最优解</span>
+                                <span class="lang-en">Energy Efficiency Optimization</span>
+                            </h4>
+                            <p>
+                                <span class="lang-zh">小天鹅执行的是一场超长距离的能量管理程序。面对干旱内陆，它们的策略是“分段续航”。利用沿途季节性湖泊作为必要的能量补给站，精确计算飞行距离与体能储备，完成跨越荒野的远征。</span>
+                                <span class="lang-en">Tundra Swans execute a long-range energy management program. Facing arid inland areas, their strategy is "staged refueling." Utilizing seasonal lakes as essential depots, they balance flight distance and energy reserves to cross the wilderness.</span>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="story-card" style="border-top-color: #56ccf2;">
+                            <h4 style="color:#56ccf2">
+                                <span class="lang-zh">西线：生理机能最大化</span>
+                                <span class="lang-en">Physiological Maximization</span>
+                            </h4>
+                            <p>
+                                <span class="lang-zh">斑头雁掌握着破解物理极限的高阶算法。为了翻越喜马拉雅，它们进化出了极强的心肺功能。这并非蛮力对抗，而是等待最佳季风气流，利用环境助力在极短时间内完成垂直升限挑战的完美结合。</span>
+                                <span class="lang-en">Bar-headed Geese possess a high-level algorithm for extreme physics. To cross the Himalayas, they evolved specialized cardio functions. Their strategy is waiting for optimal monsoon winds, leveraging the environment for a rapid vertical ascent.</span>
+                            </p>
+                        </div>
                     </div>
                 </div>
 
-                <div class="arrow-next"><i class="fas fa-chevron-right"></i></div>
-
-                <!-- Tech Stack -->
-                <div class="glass-card" style="flex: 1; text-align: center; border: 4px solid var(--primary);">
-                    <h3 style="color: var(--primary); margin-bottom: 40px;">TECH STACK</h3>
-                    <div style="text-align: left;">
-                        <p><strong>Leaflet.js:</strong> Base map rendering & TileLayers.</p>
-                        <p><strong>Turf.js:</strong> Real-time geospatial calculation (Distance, Bearing) between points.</p>
-                        <p><strong>ECharts:</strong> Dynamic charts linked to map interactions.</p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="footer"><span>Methodology</span><span>4 / 8</span></div>
-        </div>
-
-        <!-- ================= PAGE 5: 演示过渡 ================= -->
-        <div class="slide active" style="background-color: var(--primary); justify-content: center; text-align: center;">
-            <i class="fas fa-laptop-code" style="font-size: 12rem; color: white; margin-bottom: 50px; opacity: 0.9;"></i>
-            <h1 style="color: white; font-size: 8rem; margin-bottom: 30px;">Live Demo</h1>
-            <p style="color: rgba(255,255,255,0.95); font-size: 3rem;">Switching to Browser...</p>
-            <div class="footer" style="color: rgba(255,255,255,0.6); border-color: rgba(255,255,255,0.3);"><span>Demonstration</span><span>5 / 8</span></div>
-        </div>
-
-        <!-- ================= PAGE 6: 关键发现 ================= -->
-        <div class="slide">
-            <h2>Key Findings & Results</h2>
-            <div class="grid-3">
-                
-                <div class="glass-card">
-                    <h3>Isotherm Dependency</h3>
-                    <p>Visual analysis confirms birds move north strictly within the <strong>5-10°C zone</strong>. They track the "Green Wave" of spring resources.</p>
-                </div>
-
-                <div class="glass-card">
-                    <h3>The "West" Challenge</h3>
-                    <p><strong>Bar-headed Geese</strong> show extreme elevation gain crossing the Himalayas (8000m+). This requires maximum energy efficiency.</p>
-                </div>
-
-                <div class="glass-card" style="border: 3px solid var(--accent); background: rgba(167, 29, 42, 0.05);">
-                    <h3 style="color: var(--accent);">Survival Mode</h3>
-                    <p>Simulating the destruction of a key node (e.g., Yellow River Delta) leads to <strong>Energy Depletion (0%)</strong> before arrival.</p>
+                <div class="story-summary">
+                    <h3>
+                        <span class="lang-zh">共同的节律：等温线的召唤</span>
+                        <span class="lang-en">Common Rhythm: The Call of Isotherms</span>
+                    </h3>
+                    <p>
+                        <span class="lang-zh">
+                            尽管三条路线的地理挑战迥异，但它们都严格遵循着同一个“物候时钟”。地图上的热力流动揭示了这一核心算法：从南亚的热浪到西伯利亚的寒风，候鸟的每一次振翅，本质上都是对地球 5°C - 10°C 舒适温区北移与南撤的精准响应。这是一场生命与季节同频的宏大共振。
+                        </span>
+                        <span class="lang-en">
+                            Despite distinct geographic challenges, they all obey a single "phenological clock." The thermal flow on the map reveals this core algorithm: from South Asian heat to Siberian chill, every wingbeat is a precise response to the shifting 5°C - 10°C thermal comfort zone. It is a grand resonance of life synchronized with the seasons.
+                        </span>
+                    </p>
                 </div>
 
             </div>
-            <div class="footer"><span>Conclusion</span><span>6 / 8</span></div>
-        </div>
-
-        <!-- ================= PAGE 7: 意义与反思 ================= -->
-        <div class="slide">
-            <h2>Significance & Reflection</h2>
-            <div class="grid-2">
-                <div class="glass-card">
-                    <h3><i class="fas fa-lightbulb"></i> Social Significance</h3>
-                    <ul>
-                        <li><strong>Gamification:</strong> Transforming abstract data into a "Survival Game" evokes stronger empathy for bird conservation.</li>
-                        <li><strong>Policy Insight:</strong> Protecting <em>stopovers</em> is as critical as protecting breeding grounds.</li>
-                    </ul>
-                </div>
-                <div class="glass-card">
-                    <h3><i class="fas fa-code"></i> Technical Reflection</h3>
-                    <ul>
-                        <li><strong>Challenge:</strong> Simulating "Energy Decay" logic based on real-time distance was mathematically complex.</li>
-                        <li><strong>Future Work:</strong> Integrate Real-time Weather API for live temperature data.</li>
-                    </ul>
-                </div>
+        </section>
+        
+        <section class="signup-section" id="contact">
+            <div class="container px-4 px-lg-5 text-center">
+                <i class="far fa-paper-plane fa-2x mb-4 text-white"></i>
+                <h2 class="text-white mb-4 brand-font">
+                    <span class="lang-zh">关注候鸟保护计划</span>
+                    <span class="lang-en">Protect the Migratory Birds</span>
+                </h2>
+                <form class="col-md-6 mx-auto d-flex">
+                    <input class="form-control me-2" type="email" placeholder="Email..." />
+                    <button class="btn btn-primary" type="button">
+                        <span class="lang-zh">订阅</span><span class="lang-en">Subscribe</span>
+                    </button>
+                </form>
             </div>
-            <div class="footer"><span>Reflection</span><span>7 / 8</span></div>
-        </div>
+        </section>
 
-        <!-- ================= PAGE 8: 结尾 ================= -->
-        <div class="slide" style="justify-content: center; text-align: center;">
-            <h1 style="font-size: 8rem; margin-bottom: 30px;">Thank You</h1>
-            <h3 style="font-size: 3.5rem; color: #777; margin-bottom: 80px; font-weight: 300;">Q & A</h3>
+        <footer class="footer bg-black small text-center text-white-50 py-4">
+            <div class="container">Copyright &copy; Spring Chasers 2025 | Tiles &copy; CARTO & OSM</div>
+        </footer>
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
+        <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+
+        <script>
+            // --- 全局变量 ---
+            let currentLang = 'zh'; 
+            let currentMonth = 1;
+            const TILE_BASE_URL = './tiles/2024-'; 
             
-            <div style="font-size: 2.5rem; color: var(--secondary); font-family: serif; font-style: italic;">
-                "Protect the Stopovers, Save the Journey."
-            </div>
+            const birdMarkers = {}; 
+            let routeDrawTimeouts = [];
+            const activeRoutes = { east: true, mid: true, west: true, heatmap: false }; // 包含 heatmap 状态
 
-            <div style="margin-top: 100px; display: flex; justify-content: center; gap: 80px;">
-                <div style="text-align: center; opacity: 0.8;">
-                    <i class="fab fa-github" style="font-size: 5rem; color: var(--secondary);"></i>
-                    <p style="font-size: 1.5rem; margin-top: 20px;">View Code</p>
-                </div>
-                <div style="text-align: center; opacity: 0.8;">
-                    <i class="fas fa-globe" style="font-size: 5rem; color: var(--primary);"></i>
-                    <p style="font-size: 1.5rem; margin-top: 20px;">Live Site</p>
-                </div>
-            </div>
-            
-            <div class="footer"><span>End</span><span>8 / 8</span></div>
-        </div>
+            // 分析图表变量
+            const charts = { distance: null, latitude: null, elevation: null };
+            let isChartVisible = false;
+            let currentTab = 'distance';
 
-    </div>
+            // 生态挑战变量
+            let isSurvivalMode = false;
+            const stopoverMarkers = []; 
+            const destroyedSites = {}; 
 
-    <script>
-        // --- 核心控制逻辑 ---
-        let currentSlide = 0;
-        const slides = document.querySelectorAll('.slide');
-        const deck = document.getElementById('slide-container');
+            // --- 1. 热力图数据 (来自 V1) ---
+            const heatMapPoints = [
+                [29.11, 116.63, 1.0], [28.90, 112.90, 0.9], [47.20, 124.25, 1.0], 
+                [36.80, 100.20, 1.0], [37.75, 118.95, 0.8], [33.38, 120.13, 0.9], 
+                [31.50, 121.90, 0.7], [26.85, 104.28, 0.8], [41.12, 121.12, 0.6], 
+                [53.00, 108.00, 0.6], [34.80, 113.50, 0.5], [30.20, 117.40, 0.7], 
+                [19.00, 109.50, 0.5], [24.00, 120.50, 0.4], [27.20, 88.00, 1.0], 
+                [29.65, 91.13, 0.8], [27.20, 88.00, 1.0], [45.00, 132.50, 0.5], 
+                [49.50, 136.00, 0.3], [43.10, 144.50, 0.4], [32.10, 130.30, 0.4], 
+                [38.20, 127.20, 0.4], [36.00, 126.70, 0.3], [27.80, 99.60, 0.4], 
+                [24.90, 102.70, 0.3], [30.70, 106.10, 0.2], [35.50, 97.00, 0.3], 
+                [27.17, 77.52, 0.5], [19.80, 85.30, 0.4], [24.50, 93.90, 0.2], 
+                [22.00, 89.00, 0.3], [32.00, 76.00, 0.3], [25.00, 67.00, 0.2], 
+                [20.50, 96.90, 0.3], [12.50, 104.20, 0.4], [10.00, 106.00, 0.3], 
+                [17.00, 100.00, 0.2], [50.30, 92.70, 0.4], [51.10, 100.80, 0.4], 
+                [47.80, 117.70, 0.3], [47.70, 102.70, 0.3], [49.95, 115.70, 0.4], 
+                [73.00, 126.50, 0.5], [71.40, 148.00, 0.4], [64.50, 155.00, 0.3], 
+                [62.00, 129.70, 0.3], [55.00, 83.00, 0.3]
+            ];
+            let heatLayer = null;
+            let pulseMarkers = [];
+            const keyLocations = [
+                { pos: [33.38, 120.13], type: 'winter' }, { pos: [47.20, 124.25], type: 'breeding' },
+                { pos: [29.10, 116.68], type: 'winter' }, { pos: [53.00, 108.00], type: 'breeding' },
+                { pos: [27.20, 88.00], type: 'winter' }, { pos: [36.80, 100.20], type: 'breeding' }
+            ];
 
-        // 1. 强制缩放：确保 1920x1080 的内容适配任意屏幕
-        function resizeDeck() {
-            // 获取窗口宽高
-            const windowW = window.innerWidth;
-            const windowH = window.innerHeight;
-            
-            // 计算缩放比例 (保持比例适配)
-            const scale = Math.min(windowW / 1920, windowH / 1080);
-            
-            // 应用变换：居中 + 缩放
-            // 这里的 translate 配合 body 的 flex center 实现完美居中
-            // 重点：transform-origin 已经在 CSS 中设为 center center
-            deck.style.transform = `scale(${scale})`;
-        }
-
-        // 监听窗口大小变化
-        window.addEventListener('resize', resizeDeck);
-        // 初始化
-        setTimeout(resizeDeck, 50);
-
-        // 2. 翻页逻辑
-        function showSlide(n) {
-            if (n >= slides.length) n = slides.length - 1;
-            if (n < 0) n = 0;
-            
-            slides.forEach((slide, index) => {
-                if (index === n) {
-                    slide.classList.add('active');
-                } else {
-                    slide.classList.remove('active');
+            // --- 2. 核心数据 (V2) ---
+            const birdData = {
+                east: {
+                    id: 'crane', name_zh: "东线：丹顶鹤", name_en: "East: Red-crowned Crane", color: "#FF7F50",
+                    elevation_data: [50, 50, 100, 200, 250, 250, 250, 250, 200, 150, 100, 50],
+                    sidebar_info_zh: `<strong>习性：</strong> 沿海“逐水而居”，依赖芦苇湿地。<br><strong>路线：</strong> 盐城(冬) <i class="fas fa-arrows-alt-v"></i> 扎龙(夏)`,
+                    sidebar_info_en: `<strong>Habit:</strong> Coastal dweller, wetland dependent.<br><strong>Route:</strong> Yancheng <i class="fas fa-arrows-alt-v"></i> Zhalong`,
+                    monthlyData: [
+                        { pos: [33.38, 120.13], energy_change: 5,  is_stopover: false, desc_zh: "<b>[越冬·盐城]</b> 在芦苇丛中通过吞食鱼虾积累脂肪。", desc_en: "<b>[Wintering]</b> Building fat reserves." },
+                        { pos: [33.50, 120.20], energy_change: 5,  is_stopover: false, desc_zh: "<b>[越冬末期]</b> 鹤群开始活跃，进行北迁前集结。", desc_en: "<b>[Rallying]</b> Preparing for migration." },
+                        { pos: [37.75, 118.95], energy_change: 30, is_stopover: true,  site_name_zh: "黄河三角洲", site_name_en: "Yellow River Delta", desc_zh: "<b>[北迁·黄河口]</b> 飞抵黄河三角洲停歇补给。", desc_en: "<b>[Refueling]</b> Stopover at Yellow River Delta." },
+                        { pos: [41.12, 121.12], energy_change: -20, is_stopover: false, desc_zh: "<b>[北迁·辽宁]</b> 随着5°C等温线北移穿越环渤海。", desc_en: "<b>[Migration]</b> Crossing the Bohai Rim." },
+                        { pos: [47.20, 124.25], energy_change: -10, is_stopover: false, desc_zh: "<b>[抵达·扎龙]</b> 终于到达繁殖地，开始筑巢。", desc_en: "<b>[Arrival]</b> Reaching Zhalong." },
+                        { pos: [47.30, 124.30], energy_change: 10, is_stopover: false, desc_zh: "<b>[繁殖期]</b> 正在孵化卵，利用芦苇作屏障。", desc_en: "<b>[Breeding]</b> Incubation phase." },
+                        { pos: [47.25, 124.20], energy_change: 5,  is_stopover: false, desc_zh: "<b>[育雏期]</b> 雏鸟破壳，在浅水中学习觅食。", desc_en: "<b>[Nurturing]</b> Chicks foraging." },
+                        { pos: [47.00, 124.00], energy_change: 10, is_stopover: false, desc_zh: "<b>[练飞期]</b> 幼鸟羽翼渐丰，家族群开始集结。", desc_en: "<b>[Fledging]</b> Young birds flight practice." },
+                        { pos: [44.50, 122.00], energy_change: -15, is_stopover: false, desc_zh: "<b>[南迁·吉林]</b> 气温骤降，避开寒冷沿海风口。", desc_en: "<b>[Southbound]</b> Avoiding coastal winds." },
+                        { pos: [38.00, 117.50], energy_change: -15, is_stopover: false, desc_zh: "<b>[南迁·河北]</b> 借助秋季强劲北风滑翔。", desc_en: "<b>[Gliding]</b> Riding autumn thermals." },
+                        { pos: [34.50, 118.50], energy_change: 30, is_stopover: true,  site_name_zh: "连云港湿地", site_name_en: "Lianyungang Wetlands", desc_zh: "<b>[南迁·江苏]</b> 抵达连云港，回到越冬地前最后一站。", desc_en: "<b>[Rest]</b> Stopover at Lianyungang." },
+                        { pos: [33.38, 120.13], energy_change: 10, is_stopover: false, desc_zh: "<b>[回归·盐城]</b> 回到温暖的南方湿地，安度寒冬。", desc_en: "<b>[Return]</b> Back to winter sanctuary." }
+                    ]
+                },
+                mid: {
+                    id: 'swan', name_zh: "中线：小天鹅", name_en: "Mid: Tundra Swan", color: "#20c997",
+                    elevation_data: [100, 100, 500, 1200, 1500, 1500, 1500, 1500, 1200, 800, 300, 100],
+                    sidebar_info_zh: `<strong>习性：</strong> 耐力惊人，能跨越内陆干旱区。<br><strong>路线：</strong> 鄱阳湖(冬) <i class="fas fa-arrows-alt-v"></i> 西伯利亚(夏)`,
+                    sidebar_info_en: `<strong>Habit:</strong> High endurance, crosses arid lands.<br><strong>Route:</strong> Poyang <i class="fas fa-arrows-alt-v"></i> Siberia`,
+                    monthlyData: [
+                        { pos: [29.10, 116.68], energy_change: 5, is_stopover: false, desc_zh: "<b>[越冬·鄱阳湖]</b> 利用长颈挖掘浅滩下的块茎。", desc_en: "<b>[Wintering]</b> Digging for tubers." },
+                        { pos: [30.00, 115.50], energy_change: 5, is_stopover: false, desc_zh: "<b>[越冬·龙感湖]</b> 在长江中下游湖泊群间迁移。", desc_en: "<b>[Foraging]</b> Moving to find food." },
+                        { pos: [34.80, 113.50], energy_change: -15, is_stopover: false, desc_zh: "<b>[北迁·黄河]</b> 飞越黄河，在三门峡库区停歇。", desc_en: "<b>[Crossing]</b> Flying over Yellow River." },
+                        { pos: [41.00, 113.00], energy_change: 30, is_stopover: true, site_name_zh: "岱海/内蒙湖泊", site_name_en: "Inner Mongolia Lakes", desc_zh: "<b>[北迁·内蒙]</b> 飞越干旱草原，在岱海停歇补水。", desc_en: "<b>[Hydration]</b> Stopover at lakes." },
+                        { pos: [50.00, 105.00], energy_change: -20, is_stopover: false, desc_zh: "<b>[北迁·出境]</b> 抵达贝加尔湖南岸，冰雪初融。", desc_en: "<b>[Border]</b> Reaching Lake Baikal." },
+                        { pos: [53.00, 108.00], energy_change: -10, is_stopover: false, desc_zh: "<b>[抵达·苔原]</b> 到达西伯利亚繁殖地，快速筑巢。", desc_en: "<b>[Arrival]</b> Reaching Siberian Tundra." },
+                        { pos: [54.00, 109.00], energy_change: 10, is_stopover: false, desc_zh: "<b>[育雏高峰]</b> 昆虫爆发提供丰富蛋白质。", desc_en: "<b>[Peak Season]</b> Abundant food supply." },
+                        { pos: [53.50, 108.50], energy_change: 5, is_stopover: false, desc_zh: "<b>[换羽期]</b> 成鸟暂时失去飞行能力。", desc_en: "<b>[Molting]</b> Flightless period." },
+                        { pos: [45.00, 116.00], energy_change: -20, is_stopover: false, desc_zh: "<b>[南迁·草原]</b> 寒流来袭，经由锡林郭勒南下。", desc_en: "<b>[Southbound]</b> Taking grassland route." },
+                        { pos: [37.00, 116.50], energy_change: 30, is_stopover: true, site_name_zh: "黄河故道湿地", site_name_en: "Old Yellow River Wetlands", desc_zh: "<b>[南迁·山东]</b> 在黄河故道湿地停歇等待气流。", desc_en: "<b>[Rest]</b> Old Yellow River course." },
+                        { pos: [31.00, 117.50], energy_change: -10, is_stopover: false, desc_zh: "<b>[南迁·安徽]</b> 抵达升金湖，利用枯水期滩涂。", desc_en: "<b>[Arrival]</b> Reaching Shengjin Lake." },
+                        { pos: [29.10, 116.68], energy_change: 10, is_stopover: false, desc_zh: "<b>[回归·鄱阳湖]</b> 家族群团聚，万鸟齐鸣。", desc_en: "<b>[Reunion]</b> Wintering at Poyang." }
+                    ]
+                },
+                west: {
+                    id: 'goose', name_zh: "西线：斑头雁", name_en: "West: Bar-headed Goose", color: "#56ccf2",
+                    elevation_data: [300, 300, 4500, 8000, 3200, 3200, 3200, 3200, 6000, 8200, 1500, 300],
+                    terrain_data:   [200, 200, 2000, 6500, 3000, 3000, 3000, 3000, 4000, 6000, 1000, 200],
+                    sidebar_info_zh: `<strong>习性：</strong> 极强心肺功能，飞越世界屋脊。<br><strong>路线：</strong> 印度(冬) <i class="fas fa-arrows-alt-v"></i> 青海湖(夏)`,
+                    sidebar_info_en: `<strong>Habit:</strong> Extreme cardio, over Himalayas.<br><strong>Route:</strong> India <i class="fas fa-arrows-alt-v"></i> Qinghai Lake`,
+                    monthlyData: [
+                        { pos: [27.20, 88.00], energy_change: 10, is_stopover: false, desc_zh: "<b>[越冬·南亚]</b> 在印度与尼泊尔交界低地越冬。", desc_en: "<b>[Wintering]</b> South Asian lowlands." },
+                        { pos: [27.20, 88.00], energy_change: 5, is_stopover: false, desc_zh: "<b>[集结]</b> 在喜马拉雅南麓盘旋，等待上升气流。", desc_en: "<b>[Waiting]</b> Circling for monsoon." },
+                        { pos: [30.00, 91.00], energy_change: -30, is_stopover: false, desc_zh: "<b>[翻越巅峰]</b> 奇迹时刻！8小时内升至海拔8000米。", desc_en: "<b>[Summit]</b> Crossing Himalayas." },
+                        { pos: [34.00, 95.00], energy_change: 25, is_stopover: true, site_name_zh: "长江源湿地", site_name_en: "Yangtze Source Wetlands", desc_zh: "<b>[北迁·高原]</b> 穿越无人区，凭借厚绒抵御严寒。", desc_en: "<b>[Crossing]</b> Flying over no-man's land." },
+                        { pos: [36.80, 100.20], energy_change: -10, is_stopover: false, desc_zh: "<b>[抵达·青海湖]</b> 利用湖心岛隔绝捕食者开始筑巢。", desc_en: "<b>[Arrival]</b> Qinghai Lake." },
+                        { pos: [37.00, 100.00], energy_change: 10, is_stopover: false, desc_zh: "<b>[孵化期]</b> 湖中湟鱼回游提供丰富营养。", desc_en: "<b>[Nesting]</b> Building nests." },
+                        { pos: [36.90, 100.40], energy_change: 5, is_stopover: false, desc_zh: "<b>[育雏期]</b> 雏鸟只能游泳躲避天敌。", desc_en: "<b>[Rearing]</b> Avoiding predators." },
+                        { pos: [36.80, 100.20], energy_change: 10, is_stopover: false, desc_zh: "<b>[练飞期]</b> 幼鸟羽翼丰满，开始编队飞行。", desc_en: "<b>[Training]</b> Formation flight." },
+                        { pos: [34.00, 92.00], energy_change: 20, is_stopover: true, site_name_zh: "雅鲁藏布河谷", site_name_en: "Yarlung Tsangpo Valley", desc_zh: "<b>[南迁·唐古拉]</b> 经由唐古拉山口向南撤离。", desc_en: "<b>[Departure]</b> Crossing Tanggula Pass." },
+                        { pos: [30.00, 85.00], energy_change: -10, is_stopover: false, desc_zh: "<b>[南迁·河谷]</b> 在雅鲁藏布江上游休整。", desc_en: "<b>[Rest]</b> Valley rest." },
+                        { pos: [28.00, 84.00], energy_change: -20, is_stopover: false, desc_zh: "<b>[飞越·干城章嘉]</b> 借助秋季北风高速俯冲越过雪山。", desc_en: "<b>[Descent]</b> Over Kangchenjunga." },
+                        { pos: [27.20, 88.00], energy_change: 10, is_stopover: false, desc_zh: "<b>[回归·南亚]</b> 在温暖的河谷平原降落。", desc_en: "<b>[Landing]</b> Return to warmth." }
+                    ]
                 }
+            };
+
+            var map = L.map('map', { scrollWheelZoom: false }).setView([36.0, 104.0], 4);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap, &copy; CARTO' }).addTo(map);
+
+            var taiwanGeoJson = { "type": "Feature", "properties": { "name": "Taiwan" }, "geometry": { "type": "MultiPolygon", "coordinates": [[[[121.941406,24.753232],[121.931641,24.612845],[121.819824,24.359554],[121.554199,24.114166],[121.583496,23.634487],[121.439453,23.153114],[120.878906,21.930295],[120.839355,21.945431],[120.727539,22.385658],[120.588867,22.583643],[120.169922,23.17303],[120.070312,23.561461],[120.18457,23.893395],[120.406738,24.211687],[120.588867,24.487149],[120.816895,24.843937],[121.039062,25.058106],[121.510254,25.292033],[121.858887,25.162677],[122.004883,25.120819],[121.941406,24.753232]]]] } };
+            L.geoJSON(taiwanGeoJson, { style: { fillColor: '#808080', fillOpacity: 0.7, color: '#666666', weight: 1 } }).addTo(map);
+
+            var historyLayerGroup = L.layerGroup().addTo(map);
+            let currentTemperatureLayer = null;
+
+            // [新增] 地图比例尺 (Scale)
+            L.control.scale({ position: 'bottomleft', metric: true, imperial: false }).addTo(map);
+
+            // [新增] 导航栏滚动自适应
+            window.addEventListener('scroll', function() {
+                const navbar = document.getElementById('mainNav');
+                if (window.scrollY > 100) { navbar.classList.add('navbar-scrolled'); }
+                else { navbar.classList.remove('navbar-scrolled'); }
             });
-            currentSlide = n;
-        }
 
-        // 键盘事件
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') {
-                showSlide(currentSlide + 1);
-            } else if (e.key === 'ArrowLeft') {
-                showSlide(currentSlide - 1);
+            // --- 3. 过滤器 (整合版) ---
+            var filterControl = L.control({position: 'topright'});
+            filterControl.onAdd = function (map) {
+                var div = L.DomUtil.create('div', 'map-filter-control');
+                L.DomEvent.disableClickPropagation(div); div.id = 'map-filter-ui'; return div;
+            };
+            filterControl.addTo(map);
+
+            function updateFilterUI() {
+                const container = document.getElementById('map-filter-ui');
+                if (!container) return;
+                const title = currentLang === 'zh' ? '线路筛选' : 'Route Filter';
+                let html = `<div class="filter-title">${title}</div>`;
+                
+                // 线路开关
+                Object.entries(birdData).forEach(([key, bird]) => {
+                    const nameFull = currentLang === 'zh' ? bird.name_zh : bird.name_en;
+                    const name = nameFull.split(/[:：]/)[0]; 
+                    const isActive = activeRoutes[key] ? 'active' : '';
+                    const bgStyle = activeRoutes[key] ? `background: ${bird.color}; border-color:${bird.color}` : `background: transparent; border-color: #ddd`;
+                    html += `<div class="filter-item ${isActive}" onclick="toggleRoute('${key}', this)"><div class="filter-checkbox" style="${bgStyle}"></div><div class="filter-label">${name}</div></div>`;
+                });
+
+                // [新增] 热力图开关 (来自 V1)
+                const hmActive = activeRoutes.heatmap ? 'active' : '';
+                const hmColor = '#FF8C00'; 
+                const hmBgStyle = activeRoutes.heatmap ? `background: ${hmColor}; border-color:${hmColor}` : `background: transparent; border-color: #ddd`;
+                const hmLabel = currentLang === 'zh' ? '栖息地' : 'Habitat Heat';
+                html += `<div class="filter-item ${hmActive}" onclick="toggleHeatmap(this)"><div class="filter-checkbox" style="${hmBgStyle}" data-color="${hmColor}"></div><div class="filter-label" style="color:#d35400;">${hmLabel}</div></div>`;
+
+                container.innerHTML = html;
             }
-        });
 
-        // 鼠标点击事件
-        document.addEventListener('click', (e) => {
-            if (e.clientX > window.innerWidth / 2) {
-                showSlide(currentSlide + 1);
-            } else {
-                showSlide(currentSlide - 1);
+            function toggleRoute(routeKey, element) {
+                activeRoutes[routeKey] = !activeRoutes[routeKey];
+                updateFilterUI(); 
+                const imgEl = document.getElementById(`bg-img-${routeKey}`);
+                if (imgEl) activeRoutes[routeKey] ? imgEl.classList.add('active') : imgEl.classList.remove('active');
+                updateBirdMigration(currentMonth);
+                refreshAllCharts();
+                renderStopoverMarkers();
             }
-        });
 
-    </script>
-</body>
+            // [新增] 热力图切换逻辑 (来自 V1)
+            function toggleHeatmap(element) {
+                activeRoutes.heatmap = !activeRoutes.heatmap;
+                updateFilterUI();
+                const mapContainer = document.getElementById('map');
+                
+                if (activeRoutes.heatmap) {
+                    mapContainer.classList.add('night-mode');
+                    if (!heatLayer) {
+                        heatLayer = L.heatLayer(heatMapPoints, { max: 0.3, radius: 40, blur: 20, maxZoom: 9, minOpacity: 0.08, gradient: { 0.1: 'rgba(139, 0, 0, 0.8)', 0.6: 'rgba(255, 165, 0, 0.95)', 1.0: '#FFFFFF' } });
+                    }
+                    heatLayer.addTo(map);
+                    
+                    keyLocations.forEach(loc => {
+                        const typeClass = loc.type === 'breeding' ? 'pulse-breeding' : 'pulse-winter';
+                        const pulseIcon = L.divIcon({ className: '', html: `<div class="pulse-icon ${typeClass}"><div class="pulse-ring"></div><div class="pulse-ring"></div></div>`, iconSize: [40, 40], iconAnchor: [20, 20] });
+                        const marker = L.marker(loc.pos, { icon: pulseIcon, interactive: false, zIndexOffset: -100 }).addTo(map);
+                        pulseMarkers.push(marker);
+                    });
+                } else {
+                    mapContainer.classList.remove('night-mode');
+                    if (heatLayer) map.removeLayer(heatLayer);
+                    pulseMarkers.forEach(m => map.removeLayer(m));
+                    pulseMarkers = [];
+                }
+            }
+
+            // --- 4. [生存挑战模式] (V2) ---
+            function toggleSurvivalMode() {
+                const checkbox = document.getElementById('survivalModeToggle');
+                isSurvivalMode = checkbox.checked;
+                const dashboard = document.getElementById('energy-dashboard');
+                
+                if (isSurvivalMode) {
+                    dashboard.style.display = 'block';
+                    renderStopoverMarkers(); 
+                } else {
+                    dashboard.style.display = 'none';
+                    clearStopoverMarkers();
+                }
+                updateBirdMigration(currentMonth); 
+            }
+
+            function renderStopoverMarkers() {
+                clearStopoverMarkers();
+                if (!isSurvivalMode) return;
+                Object.entries(birdData).forEach(([birdKey, bird]) => {
+                    if (!activeRoutes[birdKey]) return;
+                    bird.monthlyData.forEach((data, index) => {
+                        if (data.is_stopover) {
+                            const siteId = `${birdKey}_${index}`;
+                            const isDestroyed = destroyedSites[siteId];
+                            const iconHtml = isDestroyed ? `<i class="fas fa-skull-crossbones"></i>` : `<i class="fas fa-tint"></i>`;
+                            const className = isDestroyed ? 'stopover-icon destroyed' : 'stopover-icon';
+                            const marker = L.marker(data.pos, { 
+                                icon: L.divIcon({ className: className, html: iconHtml, iconSize: [30, 30], iconAnchor: [15, 15] }), 
+                                zIndexOffset: 2000 
+                            }).addTo(map);
+                            const siteName = currentLang === 'zh' ? data.site_name_zh : data.site_name_en;
+                            const statusText = isDestroyed ? (currentLang === 'zh' ? '已枯竭' : 'Destroyed') : (currentLang === 'zh' ? '生态良好' : 'Healthy');
+                            const btnHtml = isDestroyed ? `<button class="restore-btn" onclick="restoreSite('${siteId}')">${currentLang==='zh'?'生态修复':'Restore'}</button>` : `<button class="destroy-btn" onclick="destroySite('${siteId}')">${currentLang==='zh'?'开发破坏':'Destroy'}</button>`;
+                            marker.bindPopup(`<b>${siteName}</b><br><small>${statusText}</small><br>${btnHtml}`);
+                            stopoverMarkers.push(marker);
+                        }
+                    });
+                });
+            }
+
+            function clearStopoverMarkers() { stopoverMarkers.forEach(m => map.removeLayer(m)); stopoverMarkers.length = 0; }
+            window.destroySite = function(siteId) { destroyedSites[siteId] = true; map.closePopup(); renderStopoverMarkers(); updateBirdMigration(currentMonth); };
+            window.restoreSite = function(siteId) { delete destroyedSites[siteId]; map.closePopup(); renderStopoverMarkers(); updateBirdMigration(currentMonth); };
+
+            function calculateEnergy(birdKey, monthIndex) {
+                let energy = 50; 
+                for (let i = 0; i <= monthIndex; i++) {
+                    const data = birdData[birdKey].monthlyData[i];
+                    let change = data.energy_change;
+                    if (data.is_stopover && destroyedSites[`${birdKey}_${i}`]) change = -10;
+                    energy += change;
+                    if (energy > 100) energy = 100; if (energy < 0) energy = 0;
+                }
+                return energy;
+            }
+
+            // --- 5. [图表分析] (V2) ---
+            function toggleChartDashboard() {
+                const dashboard = document.getElementById('chart-dashboard');
+                const btn = document.getElementById('chart-trigger');
+                isChartVisible = !isChartVisible;
+                if(isChartVisible) {
+                    dashboard.classList.add('show'); btn.classList.add('active');
+                    if (currentTab === 'distance') initChartDistance();
+                    else if (currentTab === 'latitude') initChartLatitude();
+                    else if (currentTab === 'elevation') initChartElevation();
+                } else {
+                    dashboard.classList.remove('show'); btn.classList.remove('active');
+                }
+            }
+
+            function switchChartTab(tabName, element) {
+                currentTab = tabName;
+                document.querySelectorAll('.chart-tab-item').forEach(t => t.classList.remove('active'));
+                element.classList.add('active');
+                document.querySelectorAll('.chart-container').forEach(c => c.classList.remove('active'));
+                document.getElementById(`chart-${tabName}`).classList.add('active');
+                setTimeout(() => {
+                    if (tabName === 'distance') initChartDistance();
+                    if (tabName === 'latitude') initChartLatitude();
+                    if (tabName === 'elevation') initChartElevation();
+                }, 50);
+            }
+
+            function getChartCommonData() {
+                return { months: currentLang === 'zh' ? ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'] : ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'] };
+            }
+
+            function calculateDistanceData() {
+                const series = [];
+                Object.entries(birdData).forEach(([key, bird]) => {
+                    if(!activeRoutes[key]) return;
+                    let totalDist = 0; const data = [];
+                    for (let i = 0; i < 12; i++) {
+                        if (i > 0) totalDist += turf.distance(turf.point([bird.monthlyData[i-1].pos[1], bird.monthlyData[i-1].pos[0]]), turf.point([bird.monthlyData[i].pos[1], bird.monthlyData[i].pos[0]]), {units: 'kilometers'});
+                        data.push(Math.round(totalDist));
+                    }
+                    series.push({ name: currentLang === 'zh' ? bird.name_zh.split('：')[1] : bird.name_en.split(': ')[1], color: bird.color, data: data });
+                });
+                return series;
+            }
+
+            function calculateLatitudeData() {
+                const series = [];
+                Object.entries(birdData).forEach(([key, bird]) => {
+                    if(!activeRoutes[key]) return;
+                    series.push({ name: currentLang === 'zh' ? bird.name_zh.split('：')[1] : bird.name_en.split(': ')[1], color: bird.color, data: bird.monthlyData.map(d => d.pos[0]) });
+                });
+                return series;
+            }
+
+            function calculateElevationData() {
+                const series = [];
+                if(activeRoutes.west) {
+                    series.push({ name: currentLang === 'zh' ? '西线地形' : 'Terrain (West)', type: 'line', smooth: true, areaStyle: { opacity: 0.3, color: '#777' }, lineStyle: { width: 0 }, showSymbol: false, data: birdData.west.terrain_data, tooltip: { show: false } });
+                }
+                Object.entries(birdData).forEach(([key, bird]) => {
+                    if(!activeRoutes[key]) return;
+                    series.push({ name: currentLang === 'zh' ? bird.name_zh.split('：')[1] : bird.name_en.split(': ')[1], type: 'line', smooth: true, data: bird.elevation_data, itemStyle: { color: bird.color }, lineStyle: { width: 3 }, markPoint: { data: [{ xAxis: currentMonth - 1, yAxis: bird.elevation_data[currentMonth - 1], itemStyle: {color: bird.color} }], animation: false, symbol: 'circle', symbolSize: 8 } });
+                });
+                return series;
+            }
+
+            function initChartDistance() {
+                const dom = document.getElementById('chart-distance'); if(charts.distance) charts.distance.dispose();
+                charts.distance = echarts.init(dom, null, { renderer: 'svg' });
+                const series = calculateDistanceData().map(s => ({ ...s, type: 'line', smooth: true, lineStyle: {width:3}, symbol: 'none', markPoint: { data: [{ xAxis: currentMonth - 1, yAxis: s.data[currentMonth - 1], itemStyle: {color: s.color} }], symbol:'circle', symbolSize:8 } }));
+                charts.distance.setOption(getOptionBase(getChartCommonData().months, series, currentLang==='zh'?'里程 (km)':'Dist (km)'));
+                bindChartEvents(charts.distance);
+            }
+
+            function initChartLatitude() {
+                const dom = document.getElementById('chart-latitude'); if(charts.latitude) charts.latitude.dispose();
+                charts.latitude = echarts.init(dom, null, { renderer: 'svg' });
+                const series = calculateLatitudeData().map(s => ({ ...s, type: 'line', smooth: true, lineStyle: {width:3}, symbol: 'none', markPoint: { data: [{ xAxis: currentMonth - 1, yAxis: s.data[currentMonth - 1], itemStyle: {color: s.color} }], symbol:'circle', symbolSize:8 } }));
+                let opt = getOptionBase(getChartCommonData().months, series, currentLang==='zh'?'纬度 (°N)':'Lat (°N)'); opt.yAxis.min = 20; opt.yAxis.max = 60;
+                charts.latitude.setOption(opt);
+                bindChartEvents(charts.latitude);
+            }
+
+            function initChartElevation() {
+                const dom = document.getElementById('chart-elevation'); if(charts.elevation) charts.elevation.dispose();
+                charts.elevation = echarts.init(dom, null, { renderer: 'svg' });
+                charts.elevation.setOption(getOptionBase(getChartCommonData().months, calculateElevationData(), currentLang==='zh'?'海拔 (m)':'Alt (m)'));
+                bindChartEvents(charts.elevation);
+            }
+
+            function getOptionBase(categories, series, yName) {
+                return {
+                    tooltip: { trigger: 'axis', backgroundColor: 'rgba(255,255,255,0.9)', textStyle: {color:'#333', fontSize:11}, padding: 10, borderRadius: 8 },
+                    grid: { top: '15%', left: '8%', right: '8%', bottom: '5%', containLabel: true },
+                    xAxis: { type: 'category', boundaryGap: false, data: categories, axisLabel: {color:'#333', fontSize:9} },
+                    yAxis: { type: 'value', name: yName, axisLabel: {color:'#555', fontSize:9}, splitLine: {lineStyle:{type:'dashed', color:'rgba(0,0,0,0.1)'}} },
+                    series: series
+                };
+            }
+
+            function bindChartEvents(chart) {
+                chart.getZr().off('click');
+                chart.getZr().on('click', function (params) {
+                    const point = [params.offsetX, params.offsetY];
+                    if (chart.containPixel('grid', point)) {
+                        const targetMonth = chart.convertFromPixel({ seriesIndex: 0 }, point)[0] + 1;
+                        if (targetMonth >= 1 && targetMonth <= 12) { document.getElementById('month-slider').value = targetMonth; document.getElementById('month-slider').dispatchEvent(new Event('input')); }
+                    }
+                });
+            }
+
+            function refreshAllCharts() {
+                if(!isChartVisible) return;
+                const mIdx = currentMonth - 1;
+                if (currentTab === 'distance' && charts.distance) charts.distance.setOption({ series: calculateDistanceData().map(s => ({ markPoint: { data: [{ xAxis: mIdx, yAxis: s.data[mIdx], itemStyle: {color: s.color} }] } })) });
+                if (currentTab === 'latitude' && charts.latitude) charts.latitude.setOption({ series: calculateLatitudeData().map(s => ({ markPoint: { data: [{ xAxis: mIdx, yAxis: s.data[mIdx], itemStyle: {color: s.color} }] } })) });
+                if (currentTab === 'elevation' && charts.elevation) charts.elevation.setOption({ series: calculateElevationData() }); 
+            }
+
+            window.addEventListener('resize', () => { if(charts.distance) charts.distance.resize(); if(charts.latitude) charts.latitude.resize(); if(charts.elevation) charts.elevation.resize(); });
+
+            // --- 6. 地图渲染逻辑 ---
+            function getBirdSVG(type, color, isDead) {
+                let fill = isDead ? '#555' : color;
+                let transform = isDead ? 'rotate(180deg) grayscale(100%)' : '';
+                const shapes = { 
+                    'crane': `<path d="M20 5 L25 15 L38 12 L22 25 L20 38 L18 25 L2 12 L15 15 Z" fill="${fill}" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>`, 
+                    'swan': `<path d="M20 2 L28 15 L38 8 L25 22 L20 35 L15 22 L2 8 L12 15 Z" fill="${fill}" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>`, 
+                    'goose': `<path d="M20 0 L26 18 L36 24 L20 28 L4 24 L14 18 Z" fill="${fill}" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>` 
+                };
+                return `<svg width="40" height="40" viewBox="0 0 40 40" style="overflow:visible; transform:${transform}"><filter id="ds-${type}"><feDropShadow dx="0" dy="3" stdDeviation="2" flood-color="rgba(0,0,0,0.3)"/></filter><g filter="url(#ds-${type})">${shapes[type]}</g></svg>`;
+            }
+
+            function renderSidebar() {
+                const container = document.getElementById('sidebar-content');
+                const title = currentLang === 'zh' ? '代表种群档案' : 'Species Archive';
+                let html = `<div class="sidebar-title">${title}</div>`;
+                Object.values(birdData).forEach(bird => {
+                    const name = currentLang === 'zh' ? bird.name_zh : bird.name_en;
+                    const info = currentLang === 'zh' ? bird.sidebar_info_zh : bird.sidebar_info_en;
+                    html += `<div class="bird-mini-card" style="border-left-color: ${bird.color};"><div class="bird-mini-title" style="color:${bird.color};">${name}</div><div class="bird-mini-text">${info}</div></div>`;
+                });
+                container.innerHTML = html + `<div class="sidebar-title mt-3" style="padding-top:5px;">${currentLang==='zh'?'图例':'Legend'}</div><div class="legend-grid">` + (currentLang==='zh' ? `<div class="legend-item"><span class="legend-dot" style="background:#3388ff;"></span>越冬地</div><div class="legend-item"><span class="legend-dot" style="background:#ff3333;"></span>繁殖地</div>` : `<div class="legend-item"><span class="legend-dot" style="background:#3388ff;"></span>Winter</div><div class="legend-item"><span class="legend-dot" style="background:#ff3333;"></span>Breeding</div>`) + `</div>`;
+            }
+
+            function updateBirdMigration(month) {
+                routeDrawTimeouts.forEach(t => clearTimeout(t)); routeDrawTimeouts = [];
+                historyLayerGroup.clearLayers();
+                const monthNamesEn = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+                Object.entries(birdData).forEach(([key, bird]) => {
+                    if (!activeRoutes[key]) {
+                        if (birdMarkers[bird.id]) { map.removeLayer(birdMarkers[bird.id]); delete birdMarkers[bird.id]; }
+                        if (isSurvivalMode) document.getElementById(`energy-row-${key}`).style.display = 'none';
+                        return;
+                    }
+                    
+                    if (isSurvivalMode) document.getElementById(`energy-row-${key}`).style.display = 'flex';
+                    const currentEnergy = calculateEnergy(key, month - 1);
+                    const isDead = currentEnergy <= 0;
+
+                    if (isSurvivalMode) {
+                        const row = document.getElementById(`energy-row-${key}`);
+                        const bar = row.querySelector('.progress-bar-fill');
+                        bar.style.width = `${currentEnergy}%`;
+                        row.querySelector('.energy-value').innerText = `${currentEnergy}%`;
+                        bar.style.background = currentEnergy > 50 ? 'linear-gradient(90deg, #20c997, #28a745)' : (currentEnergy > 20 ? 'linear-gradient(90deg, #f9d423, #ff9100)' : '#ff4e50');
+                        if (isDead) row.classList.add('bird-dead'); else row.classList.remove('bird-dead');
+                    }
+
+                    const turfPoints = bird.monthlyData.map(d => [d.pos[1], d.pos[0]]);
+                    for (let i = 0; i < month - 1; i++) {
+                        L.marker(bird.monthlyData[i].pos, { icon: L.divIcon({className:'', html:`<div class="history-dot" style="--bird-color:${bird.color};"></div>`, iconSize:[8,8], iconAnchor:[4,4]}), interactive:false, zIndexOffset:500 }).addTo(historyLayerGroup);
+                    }
+                    if (month > 2) { 
+                        let cleanStablePath = turfPoints.slice(0, month - 1).filter((pt, i, arr) => i===0 || !(pt[0]===arr[i-1][0] && pt[1]===arr[i-1][1]));
+                        if (cleanStablePath.length >= 2) L.geoJSON(turf.bezierSpline(turf.lineString(cleanStablePath), {resolution:10000, sharpness:0.5}), { style: { color: bird.color, weight: 2, opacity: 0.6, dashArray: month>8?'5,5':null } }).addTo(historyLayerGroup);
+                    }
+
+                    const monthData = bird.monthlyData[month - 1];
+                    const birdName = currentLang === 'zh' ? bird.name_zh : bird.name_en;
+                    const monthLabel = currentLang === 'zh' ? `${month}月` : monthNamesEn[month-1];
+                    let statusDesc = currentLang === 'zh' ? monthData.desc_zh : monthData.desc_en;
+                    if (isDead) statusDesc = `<strong style="color:red;">${currentLang==='zh'?'能量耗尽！迁徙失败':'Energy Depleted! Migration Failed'}</strong>`;
+
+                    let bearing = 0;
+                    if (month > 1 && !isDead) bearing = turf.bearing(turf.point([bird.monthlyData[month-2].pos[1], bird.monthlyData[month-2].pos[0]]), turf.point([monthData.pos[1], monthData.pos[0]]));
+
+                    if (birdMarkers[bird.id]) {
+                        const marker = birdMarkers[bird.id];
+                        marker.setLatLng(monthData.pos);
+                        marker.setTooltipContent(`<div style="border-bottom: 2px solid ${bird.color}; padding-bottom:5px; margin-bottom:5px; font-weight:bold; color:${bird.color}">${birdName} <span style="font-size:0.7em; color:#888; background:#eee; padding:2px 6px; border-radius:10px;">${monthLabel}</span></div><div style="font-size:0.85rem;">${statusDesc}</div>`);
+                        const iconDiv = marker.getElement().querySelector('.geo-bird-icon');
+                        if (iconDiv) {
+                            iconDiv.innerHTML = getBirdSVG(bird.id, bird.color, isDead); 
+                            iconDiv.style.transform = `rotate(${bearing}deg)`;
+                        }
+                    } else {
+                        const newMarker = L.marker(monthData.pos, { 
+                            icon: L.divIcon({ className: 'bird-icon-wrapper', html: `<div class="geo-bird-icon" style="transform: rotate(${bearing}deg);">${getBirdSVG(bird.id, bird.color, isDead)}</div>`, iconSize: [40, 40], iconAnchor: [20, 20], popupAnchor: [0, -25] }), 
+                            zIndexOffset: 1000 
+                        }).bindTooltip(`<div style="border-bottom: 2px solid ${bird.color}; padding-bottom:5px; margin-bottom:5px; font-weight:bold; color:${bird.color}">${birdName} <span style="font-size:0.7em; color:#888; background:#eee; padding:2px 6px; border-radius:10px;">${monthLabel}</span></div><div style="font-size:0.85rem;">${statusDesc}</div>`, { direction: 'top', sticky: true, className: 'bird-status-tooltip', offset: [0, -20] }).addTo(map); 
+                        birdMarkers[bird.id] = newMarker;
+                    }
+                    if (month > 1 && !isDead) {
+                        routeDrawTimeouts.push(setTimeout(() => {
+                            if (!activeRoutes[key]) return; 
+                            let cleanFullPath = turfPoints.slice(0, month).filter((pt, i, arr) => i===0 || !(pt[0]===arr[i-1][0] && pt[1]===arr[i-1][1]));
+                            if (cleanFullPath.length >= 2) L.geoJSON(turf.bezierSpline(turf.lineString(cleanFullPath), {resolution:10000, sharpness:0.5}), { style: { color: bird.color, weight: 2, opacity: 0.6, dashArray: month>8?'5,5':null } }).addTo(historyLayerGroup);
+                        }, 1500));
+                    }
+                });
+                refreshAllCharts();
+            }
+
+            function updateTemperatureLayer(m) {
+                currentMonth = m; updateMonthLabel();
+                const nextLayer = L.tileLayer(`${TILE_BASE_URL}${m.toString().padStart(2,'0')}/{z}/{x}/{y}.png`, { minZoom: 3, maxZoom: 10, opacity: 0, tms: false, zIndex: 50 }).addTo(map);
+                setTimeout(() => { if(nextLayer.getContainer()) nextLayer.setOpacity(1); }, 50);
+                if (currentTemperatureLayer) { const old = currentTemperatureLayer; setTimeout(() => map.removeLayer(old), 600); }
+                currentTemperatureLayer = nextLayer;
+                updateBirdMigration(m);
+            }
+
+            function updateMonthLabel() {
+                const en = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+                document.getElementById('current-month-label').textContent = currentLang === 'zh' ? `${currentMonth}月` : en[currentMonth - 1];
+            }
+
+            let isPlaying = false, playInterval = null;
+            const slider = document.getElementById('month-slider');
+            function togglePlay() {
+                if (isPlaying) { clearInterval(playInterval); document.getElementById('play-btn').innerHTML = '<i class="fas fa-play"></i>'; isPlaying = false; }
+                else {
+                    document.getElementById('play-btn').innerHTML = '<i class="fas fa-pause"></i>'; isPlaying = true;
+                    playInterval = setInterval(() => { let next = parseInt(slider.value) + 1; if (next > 12) next = 1; slider.value = next; updateTemperatureLayer(next); }, 1500);
+                }
+            }
+            slider.addEventListener('input', function() { if (isPlaying) togglePlay(); updateTemperatureLayer(parseInt(this.value)); });
+
+            // --- 7. [修复] 语言切换逻辑 ---
+            function toggleLanguage() {
+                const body = document.body;
+                const btnText = document.getElementById('lang-btn-text');
+                
+                // 1. 切换 body class
+                if (currentLang === 'zh') {
+                    currentLang = 'en';
+                    body.classList.add('en-mode');
+                    btnText.textContent = 'CN'; 
+                } else {
+                    currentLang = 'zh';
+                    body.classList.remove('en-mode');
+                    btnText.textContent = 'EN'; 
+                }
+                
+                // 2. 强制刷新所有动态生成的组件 (因为它们不是纯 CSS 控制的)
+                updateFilterUI();       // 刷新右上角过滤器文字
+                renderSidebar();        // 刷新左侧边栏文字
+                updateMonthLabel();     // 刷新时间轴月份
+                updateBirdMigration(currentMonth); // 刷新地图上的 Popup 和 Tooltip
+                refreshAllCharts();     // 刷新 ECharts 标题和坐标轴
+                renderStopoverMarkers(); // 刷新生存模式的破坏点 Popup
+            }
+
+            // --- Init ---
+            updateTemperatureLayer(1); renderSidebar(); updateFilterUI(); initChartDistance(); updateBirdMigration(1);
+        </script>
+    </body>
 </html>
