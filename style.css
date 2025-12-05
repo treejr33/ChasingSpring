@@ -1,0 +1,508 @@
+/* =========================================
+   1. 基础设置与双语机制
+   ========================================= */
+body { 
+    font-family: 'Montserrat', sans-serif; 
+    -webkit-font-smoothing: antialiased; 
+    -moz-osx-font-smoothing: grayscale; 
+    overflow-x: hidden; 
+    background-color: #000; 
+}
+
+/* 双语切换 - 强制权重 */
+body:not(.en-mode) .lang-en { display: none !important; }
+body.en-mode .lang-zh { display: none !important; }
+body.en-mode .lang-en { display: inline-block !important; }
+
+h1, h2, h3, .brand-font { font-family: 'Noto Serif SC', serif; }
+.text-muted { color: #666 !important; }
+
+/* 导航栏自适应 */
+#mainNav { transition: background-color 0.3s ease, padding 0.3s ease; }
+#mainNav.navbar-scrolled {
+    background-color: #000 !important;
+    padding-top: 10px; padding-bottom: 10px;
+    box-shadow: 0 2px 10px rgba(255,255,255,0.1);
+}
+
+/* =========================================
+   2. 主页 (Hero) 样式
+   ========================================= */
+header.masthead {
+    height: 100vh; min-height: auto;
+    background: transparent !important; padding: 0 !important; 
+    display: flex; justify-content: center; align-items: center;
+    position: relative; z-index: 10; text-align: center;
+}
+header.masthead::after {
+    content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 300px;
+    background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, #000000 100%);
+    z-index: -1; pointer-events: none; 
+}
+
+.hero-box {
+    border: none; padding: 0 20px; background: transparent;
+    backdrop-filter: none; box-shadow: none; max-width: 1000px;
+    animation: fadeInUp 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+header.masthead .hero-title, .hero-title {
+    font-family: 'Noto Serif SC', serif; 
+    font-size: 5.5rem; 
+    font-weight: 300 !important;
+    margin-bottom: 15px; 
+    line-height: 1.1; 
+    letter-spacing: 0.2em; 
+    color: #ffffff !important; 
+    background: none !important; 
+    -webkit-text-fill-color: #ffffff !important;
+    -webkit-background-clip: border-box !important; 
+    background-clip: border-box !important;
+    text-shadow: 0 5px 20px rgba(0,0,0,0.5);
+    transform: translateZ(0);
+}
+
+.hero-subtitle {
+    font-family: 'Montserrat', sans-serif; font-size: 1.1rem; font-weight: 300;
+    letter-spacing: 3px; text-transform: uppercase; margin-bottom: 45px; margin-top: 10px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5); opacity: 0.95; position: relative; display: inline-block;
+    color: white !important;
+}
+.hero-subtitle::before, .hero-subtitle::after {
+    content: ''; display: inline-block; width: 40px; height: 1px;
+    background: rgba(255,255,255,0.6); vertical-align: middle; margin: 0 15px;
+}
+
+.btn-hero {
+    background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.4); color: white; padding: 12px 45px; 
+    border-radius: 50px; font-size: 0.9rem; letter-spacing: 2px; text-transform: uppercase;
+    text-decoration: none; transition: all 0.4s ease; display: inline-block; box-shadow: none !important; 
+}
+.btn-hero:hover {
+    background: white; color: #333; transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.2) !important;
+}
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* =========================================
+   3. 视频背景
+   ========================================= */
+.video-background-holder {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100vh; overflow: hidden; z-index: -100;
+}
+#bg-video {
+    min-width: 100%; min-height: 100%; width: auto; height: auto;
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); object-fit: cover;
+    filter: brightness(0.8); 
+}
+.video-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; z-index: 1;
+}
+
+/* =========================================
+   4. UI 组件：按钮与浮窗
+   ========================================= */
+.lang-switch-btn {
+    position: fixed; top: 20px; right: 80px; z-index: 2000;
+    background: rgba(255,255,255,0.1); backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.4); color: white; padding: 8px 16px; border-radius: 30px;
+    cursor: pointer; font-family: 'Montserrat'; font-weight: 700; font-size: 0.8rem; transition: all 0.3s;
+}
+.lang-switch-btn:hover { background: white; color: #333; }
+
+.methodology-float {
+    position: absolute; top: 120px; right: 10%; z-index: 50;
+    width: 50px; height: 50px; overflow: hidden;
+    background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 25px;
+    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    color: white; cursor: pointer;
+}
+.methodology-float:hover, .methodology-float.active {
+    width: 300px; height: auto; border-radius: 15px; background: rgba(0, 0, 0, 0.8);
+}
+.method-icon {
+    position: absolute; top: 0; right: 0; width: 50px; height: 50px;
+    display: flex; justify-content: center; align-items: center; font-size: 1.2rem;
+}
+.method-content {
+    padding: 20px; padding-right: 50px; opacity: 0; transition: opacity 0.3s 0.1s;
+    font-size: 0.85rem; line-height: 1.6; text-align: left;
+}
+.methodology-float.active .method-content, .methodology-float:hover .method-content { opacity: 1; }
+
+.tm-down-arrow {
+    animation: arrow-bounce 2s infinite; color: rgba(255,255,255,0.7); font-size: 2rem;
+}
+@keyframes arrow-bounce {
+    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-10px); }
+    60% { transform: translateY(-5px); }
+}
+
+/* =========================================
+   5. 核心板块与地图
+   ========================================= */
+section.about-section { 
+    position: relative; z-index: 20; 
+    background: linear-gradient(to bottom, #000000 0%, rgba(0,0,0,0.5) 50%, #000000 100%),
+                url('https://images.unsplash.com/photo-1444464666168-49d633b86797?q=80&w=2069&auto=format&fit=crop');
+    background-size: cover; background-position: center; background-attachment: fixed; 
+    padding: 10rem 0; box-shadow: none; 
+}
+section.about-section h2 { color: #ffffff; text-shadow: 0 4px 10px rgba(0,0,0,0.8); margin-bottom: 2rem; }
+section.about-section p { color: rgba(255,255,255,0.9); text-shadow: 0 2px 5px rgba(0,0,0,0.8); line-height: 2; max-width: 800px; margin-left: auto; margin-right: auto; }
+
+section.projects-section { 
+    position: relative; z-index: 20; background-color: #f2f0eb; padding: 6rem 0; overflow: hidden; 
+}
+section.projects-section h2 { color: #2c3e50 !important; }
+
+#map { 
+    width: 100%; height: 700px; background-color: #ebedef; border-radius: 8px; 
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1); position: relative; z-index: 10;
+    transition: background-color 0.8s ease; 
+}
+
+/* 夜间模式地图 */
+#map.night-mode { background-color: #050505 !important; }
+#map.night-mode .leaflet-tile-pane {
+    filter: brightness(0.1) contrast(1) grayscale(0.2);
+    transition: filter 0.8s ease;
+}
+
+/* 过滤器控件 */
+.map-filter-control {
+    background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px);
+    padding: 8px 15px; border-radius: 50px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    font-family: 'Montserrat', sans-serif; display: flex;
+    flex-direction: row; align-items: center; gap: 15px;
+}
+.filter-title {
+    font-size: 0.75rem; font-weight: 800; color: #2c3e50;
+    margin-bottom: 0; padding-bottom: 0; padding-right: 10px;
+    border-right: 1px solid #ddd; margin-right: 5px; text-transform: uppercase; white-space: nowrap;
+}
+.filter-item { display: flex; align-items: center; cursor: pointer; transition: opacity 0.3s; margin-bottom: 0; }
+.filter-item:hover { opacity: 0.8; }
+.filter-checkbox {
+    width: 14px; height: 14px; border-radius: 3px; margin-right: 6px;
+    position: relative; border: 2px solid #ddd; transition: all 0.2s;
+}
+.filter-item.active .filter-checkbox { border-color: transparent; }
+.filter-item.active .filter-checkbox::after {
+    content: ''; position: absolute; top: 2px; left: 2px; right: 2px; bottom: 2px; background: white; opacity: 0.3;
+}
+.filter-label { font-size: 0.8rem; font-weight: 600; color: #555; white-space: nowrap; }
+
+/* 侧边栏与信息窗 */
+.sidebar-wrapper { position: absolute; top: 100px; left: 20px; z-index: 2000; }
+.sidebar-trigger-btn {
+    width: 40px; height: 40px; background: #2c3e50; color: white; border-radius: 50%;
+    display: flex; justify-content: center; align-items: center; cursor: pointer;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2); transition: all 0.3s;
+}
+.sidebar-panel {
+    width: 300px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); 
+    border-radius: 8px; margin-left: 12px; padding: 15px;
+    position: absolute; top: 0; left: 40px; opacity: 0; pointer-events: none; 
+    transform: translateX(-10px); transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1); 
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37); border: 1px solid rgba(255, 255, 255, 0.18);
+    text-align: left; font-size: 0.85rem;
+}
+.sidebar-wrapper:hover .sidebar-panel { opacity: 1; pointer-events: auto; transform: translateX(0); }
+.sidebar-title {
+    font-size: 0.95rem; font-weight: 800; color: #2c3e50;
+    border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 10px; letter-spacing: 1px;
+}
+.bird-mini-card {
+    border-left-width: 3px; border-left-style: solid;
+    background: rgba(245,247,250, 0.5); padding: 8px 10px; margin-bottom: 8px; border-radius: 0 4px 4px 0;
+}
+.bird-mini-title { font-weight: 700; font-size: 0.85rem; margin-bottom: 2px; }
+.bird-mini-text { font-size: 0.75rem; color: #666; line-height: 1.4; }
+.legend-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size: 0.75rem; color: #555; }
+.legend-item { display: flex; align-items: center; font-weight: 600; text-shadow: 1px 1px 0 #fff; }
+.legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; flex-shrink: 0; }
+
+/* 图表悬浮窗 */
+.chart-trigger-btn {
+    position: absolute; top: 160px; left: 20px; width: 40px; height: 40px;
+    background: #2c3e50; color: white; border-radius: 50%;
+    display: flex; justify-content: center; align-items: center; cursor: pointer;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2); z-index: 2000; transition: all 0.3s ease;
+}
+.chart-trigger-btn:hover { background: #64a19d; transform: scale(1.1); }
+.chart-trigger-btn.active { background: #64a19d; box-shadow: 0 0 0 4px rgba(100, 161, 157, 0.3); }
+
+.chart-overlay-panel {
+    position: absolute; top: 100px; left: 70px; width: 480px; height: auto;
+    background: rgba(255, 255, 255, 0.25); 
+    backdrop-filter: blur(25px) saturate(180%); -webkit-backdrop-filter: blur(25px) saturate(180%);
+    border-radius: 16px; padding: 20px; border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); z-index: 1500; 
+    display: flex; flex-direction: column; opacity: 0; visibility: hidden;
+    transform: translateX(-20px); transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); pointer-events: none;
+}
+.chart-overlay-panel.show { opacity: 1; visibility: visible; transform: translateX(0); pointer-events: auto; }
+.chart-tabs { display: flex; margin-bottom: 15px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 10px; }
+.chart-tab-item {
+    margin-right: 15px; font-family: 'Noto Serif SC', serif; font-size: 0.85rem;
+    font-weight: 600; color: #555; cursor: pointer; position: relative;
+    transition: color 0.3s; opacity: 0.6; white-space: nowrap;
+}
+.chart-tab-item:hover, .chart-tab-item.active { opacity: 1; color: #2c3e50; }
+.chart-tab-item.active::after {
+    content: ''; position: absolute; bottom: -11px; left: 0;
+    width: 100%; height: 3px; background: #64a19d; border-radius: 3px 3px 0 0;
+}
+.chart-container { display: none; width: 100%; height: 220px; }
+.chart-container.active { display: block; animation: fadeIn 0.5s; }
+
+
+.right-sidebar-col {
+    /* 原代码: background-color: #e9ecef; */
+    background-color: transparent; /* 修改为透明，去除灰蓝背景 */
+    
+    /* 原代码: border-left: 1px solid #dee2e6; */
+    border-left: none; /* 建议：同时去除左侧分割线，视觉更通透 */
+    
+    padding: 20px;
+    min-height: 400px; /* 确保有最小高度 */
+}
+/* 模式开关容器 */
+.mode-switch-wrapper {
+    /* 原代码: background: white; */
+    background: rgba(255, 255, 255, 0.1); /* 修改为 50% 透明度的白色 */
+    backdrop-filter: blur(2px);           /* 新增：添加毛玻璃模糊效果，提升质感 */
+    
+    padding: 10px 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    margin-bottom: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.3); /* 可选：增加一个淡淡的边框增加层次 */
+}
+.form-check-input:checked { background-color: #a71d2a; border-color: #a71d2a; }
+
+/* 能量面板 (重构：非绝对定位) */
+.energy-panel {
+    position: relative; 
+    top: auto; 
+    right: auto;
+    width: 100%; 
+    z-index: 10;
+    background: rgba(30, 30, 30, 0.9); 
+    backdrop-filter: blur(12px); 
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 12px; 
+    padding: 15px; 
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2); 
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1); 
+    transition: all 0.3s ease; 
+    display: none; /* 默认隐藏 */
+}
+.energy-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px; font-family: 'Noto Serif SC', serif; font-weight: 700;
+    border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 8px; font-size: 0.9rem;
+}
+.energy-item { margin-bottom: 12px; display: flex; align-items: center; font-size: 0.8rem; }
+.energy-label { width: 70px; font-weight: 600; }
+.progress-container { flex-grow: 1; height: 8px; background: #444; border-radius: 4px; margin: 0 10px; position: relative; overflow: hidden; }
+.progress-bar-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #ff4e50, #f9d423); border-radius: 4px; transition: width 0.5s ease, background 0.3s; }
+.energy-value { width: 35px; text-align: right; font-family: 'Montserrat', monospace; }
+.bird-dead .progress-bar-fill { background: #555 !important; width: 0 !important; }
+.bird-dead .energy-label { color: #888; text-decoration: line-through; }
+
+/* 底部播放控件 */
+.slider-container-bottom {
+    background: white; padding: 15px 30px; border-radius: 50px; margin-top: 20px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.05); display: flex; align-items: center;
+    position: relative; z-index: 10;
+}
+.play-control-btn {
+    position: absolute; bottom: 30px; left: 30px; z-index: 1000;
+    width: 55px; height: 55px; border-radius: 50%; background: #2c3e50; color: white;
+    border: 2px solid rgba(255,255,255,0.3); display: flex; justify-content: center; align-items: center;
+    cursor: pointer; font-size: 1.2rem; transition: 0.3s; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+.play-control-btn:hover { background: #64a19d; transform: scale(1.1); }
+
+/* 温度图例 */
+.temp-legend {
+    position: absolute; bottom: 30px; right: 30px; z-index: 1000; 
+    background: rgba(255,255,255,0.9); padding: 15px; border-radius: 10px; 
+    display: flex; align-items: center;
+}
+.temp-gradient-bar {
+    width: 10px; height: 80px; 
+    background: linear-gradient(to top, #0000FF, #FFFF00, #FF0000); 
+    margin-right: 10px;
+}
+.temp-labels {
+    height: 80px; display: flex; flex-direction: column; 
+    justify-content: space-between; font-size: 0.7rem; font-weight: bold;
+}
+
+/* =========================================
+   6. 故事分析板块 (Story Section)
+   ========================================= */
+.story-section {
+    padding: 7rem 0;
+    position: relative;
+    color: white;
+    background: linear-gradient(rgba(59, 48, 10, 0.85), rgba(20, 24, 31, 0.95)), url('assets/bg-video.mp4');
+    background-size: cover; background-position: center; background-attachment: fixed;
+}
+.story-card {
+    background: rgba(255, 255, 255, 0.07); 
+    backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+    padding: 35px 25px; border-radius: 8px; margin-bottom: 30px; 
+    border-top: 3px solid transparent; 
+    transition: transform 0.4s, background 0.4s;
+    height: 100%; border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.story-card:hover { transform: translateY(-8px); background: rgba(255, 255, 255, 0.12); }
+.story-card h4 { font-family: 'Noto Serif SC', serif; font-size: 1.3rem; margin-bottom: 20px; letter-spacing: 1px; }
+.story-card p { font-size: 0.95rem; color: rgba(255,255,255,0.85); line-height: 1.8; font-weight: 400; text-align: justify; }
+
+.story-summary {
+    margin-top: 40px; padding: 30px; border-top: 1px solid rgba(255,255,255,0.2);
+    text-align: center; max-width: 900px; margin-left: auto; margin-right: auto;
+}
+.story-summary h3 { font-family: 'Noto Serif SC', serif; font-size: 1.5rem; margin-bottom: 15px; color: #e0e0e0; }
+.story-summary p { font-size: 1.1rem; line-height: 1.8; color: #b0b0b0; font-weight: 300; font-style: italic; }
+
+section.signup-section { position: relative; z-index: 20; background: #000; padding: 4rem 0; }
+.btn-primary {
+    background: #64a19d; border: none; padding: 15px 35px;
+    font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+}
+.btn-primary:hover { background: #4e8581; transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+
+/* =========================================
+   7. 地图交互元素：背景鸟、Tooltips、脉冲
+   ========================================= */
+/* 背景装饰鸟 */
+.section-bg-layer {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; overflow: hidden;
+}
+.bg-bird-img {
+    position: absolute; background-size: contain; background-repeat: no-repeat; background-position: center;
+    opacity: 0; transform: translateX(30px) scale(1.05); 
+    filter: grayscale(20%) contrast(90%) sepia(10%);
+    -webkit-mask-image: radial-gradient(ellipse at center, black 60%, transparent 75%);
+    mask-image: radial-gradient(ellipse at center, black 60%, transparent 75%);
+    transition: opacity 1s ease-in-out, transform 1.5s cubic-bezier(0.25, 1, 0.5, 1), filter 1s ease;
+}
+.bg-bird-img.active { opacity: 0.9; transform: translateX(0) scale(1); filter: grayscale(10%) contrast(95%) sepia(5%); }
+#bg-img-east { top: 45%; right: -5%; width: 30%; height: 50%; }
+#bg-img-mid { top: -15%; right: -1%; width: 40%; height: 60%; }
+#bg-img-west { top: 41%; right: 81%; width: 22%; height: 33%; }
+
+/* 地图上的标记 */
+.history-dot {
+    width: 8px; height: 8px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.8); 
+    background-color: var(--bird-color); box-shadow: 0 0 4px rgba(0,0,0,0.3); opacity: 0.8;
+}
+.bird-icon-wrapper { transition: transform 1.5s linear; will-change: transform; pointer-events: none; }
+.geo-bird-icon {
+    filter: drop-shadow(0 5px 10px rgba(0,0,0,0.3)); transition: transform 0.5s ease-out;
+    animation: floatBird 3s ease-in-out infinite; width: 100%; height: 100%;
+}
+@keyframes floatBird { 0%, 100% { margin-top: 0; } 50% { margin-top: -8px; } }
+
+.bird-status-tooltip {
+    font-family: 'Montserrat', sans-serif; max-width: 320px; min-width: 220px; 
+    white-space: normal !important; border: none; border-radius: 8px; 
+    box-shadow: 0 5px 25px rgba(0,0,0,0.2); padding: 15px 18px; 
+    background: rgba(255, 255, 255, 0.98); opacity: 1 !important; line-height: 1.6; color: #333;
+}
+
+/* 停歇点图标 */
+.stopover-icon {
+    display: flex; justify-content: center; align-items: center; font-size: 1.2rem;
+    color: #20c997; background: white; border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    border: 2px solid #20c997; transition: all 0.3s; animation: pulse-green 2s infinite;
+}
+.stopover-icon.destroyed { color: #a71d2a; border-color: #a71d2a; background: #eee; animation: none; }
+@keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(32, 201, 151, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(32, 201, 151, 0); } 100% { box-shadow: 0 0 0 0 rgba(32, 201, 151, 0); } }
+.destroy-btn { background: #a71d2a; color: white; border: none; padding: 4px 8px; border-radius: 4px; margin-top: 5px; cursor: pointer; font-size: 0.8rem; }
+.restore-btn { background: #20c997; color: white; border: none; padding: 4px 8px; border-radius: 4px; margin-top: 5px; cursor: pointer; font-size: 0.8rem; }
+
+/* 脉冲热力点 */
+.pulse-icon { position: relative; width: 100%; height: 100%; }
+.pulse-icon::after { content: ''; position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; border-radius: 50%; transform: translate(-50%, -50%); z-index: 2; }
+.pulse-ring { position: absolute; top: 50%; left: 50%; width: 30px; height: 30px; border: 2px solid; border-radius: 50%; transform: translate(-50%, -50%); opacity: 0; animation: pulse-wave 2.5s infinite linear; }
+.pulse-ring:nth-child(2) { animation-delay: 1.25s; }
+@keyframes pulse-wave { 0% { width: 4px; height: 4px; opacity: 1; border-width: 3px; } 100% { width: 60px; height: 60px; opacity: 0; border-width: 0px; } }
+.pulse-winter::after { background: #e0ffff; box-shadow: 0 0 10px #00ffff; }
+.pulse-winter .pulse-ring { border-color: #00ffff; box-shadow: 0 0 5px rgba(0, 0, 255, 0.5); }
+.pulse-breeding::after { background: #fffacd; box-shadow: 0 0 10px #ff8c00; }
+.pulse-breeding .pulse-ring { border-color: #ffd700; box-shadow: 0 0 5px rgba(255, 50, 0, 0.5); }
+
+/* Leaflet 热力图层 */
+.leaflet-heatmap-layer {
+    opacity: 1 !important; pointer-events: none; z-index: 200; mix-blend-mode: normal; 
+    filter: drop-shadow(0 0 8px rgba(255, 140, 0, 0.8)); transition: opacity 0.5s ease;
+    animation: breathe 4s infinite ease-in-out;
+}
+@keyframes breathe {
+    0%, 100% { opacity: 1; filter: drop-shadow(0 0 5px rgba(255, 140, 0, 0.6)) brightness(1.2); }
+    50% { opacity: 1; filter: drop-shadow(0 0 15px rgba(255, 215, 0, 1.0)) brightness(1.6); }
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* =========================================
+   8. 响应式布局 (Responsive Media Queries)
+   ========================================= */
+@media (max-width: 992px) {
+    .section-bg-layer { display: none; } /* 平板以下隐藏装饰背景图 */
+    
+    /* 调整地图面板高度 */
+    #map { height: 60vh; min-height: 400px; }
+    
+    .chart-trigger-btn { bottom: 160px; top: auto; }
+
+    /* 在小屏幕上，右侧边栏会自动堆叠在地图下方，无需特殊处理，
+       但可以调整一下间距 */
+    .right-sidebar-col {
+        border-left: none;
+        border-top: 1px solid #dee2e6;
+        min-height: auto;
+    }
+}
+
+@media (max-width: 768px) {
+    /* 头部 */
+    header.masthead .hero-title { font-size: 3rem; letter-spacing: 0.1em; }
+    .hero-subtitle { font-size: 1rem; }
+    .hero-subtitle::before, .hero-subtitle::after { display: none; }
+    
+    /* UI 控件位置调整 */
+    .lang-switch-btn { top: 15px; right: 60px; }
+    
+    /* 过滤器变为两行 */
+    .map-filter-control { flex-wrap: wrap; justify-content: center; gap: 10px; border-radius: 12px; }
+    .filter-title { border-right: none; width: 100%; text-align: center; margin-bottom: 5px; padding-right: 0; margin-right: 0; }
+    
+    /* 图表覆盖层全屏化 */
+    .chart-trigger-btn { bottom: 140px; }
+    .chart-overlay-panel { 
+        left: 50%; top: auto; bottom: 200px; 
+        transform: translateX(-50%) translateY(20px); 
+        width: 94%; 
+        max-width: none;
+    }
+    .chart-overlay-panel.show { transform: translateX(-50%) translateY(0); }
+    
+    /* 能量面板精简 */
+    .energy-label { display: none; } /* 手机上隐藏文字，只留进度条 */
+    
+    /* 地图高度 */
+    #map { height: 50vh; }
+}
